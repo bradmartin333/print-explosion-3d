@@ -1,11 +1,18 @@
 // 3D preview: Z-up (matches OpenSCAD and the print bed), soft ground shadow, no grid.
-// The model spins slowly on its own; clicking it pauses/resumes. Zoom and angle come from
-// plain sliders so nobody has to learn CAD mouse controls.
+// The model spins slowly on its own; clicking it pauses/resumes, and dragging turns and tilts it
+// (left/right turns, up/down tilts). Zoom and angle also come from plain sliders. The angle goes
+// below the ground so she can look at the underside; the ground is one-sided, so it disappears
+// from below.
 
 import * as THREE from "three";
 import { STLLoader } from "three/addons/loaders/STLLoader.js";
 
-export function createViewer(container, theme) {
+export const DEFAULT_ELEVATION = 28;
+const MAX_ELEVATION = 85;
+const DRAG_THRESHOLD_PX = 4; // smaller moves are still a click
+const DRAG_DEG_PER_PX = 0.4;
+
+export function createViewer(container, theme, { onElevation } = {}) {
   const renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setPixelRatio(window.devicePixelRatio);
   renderer.shadowMap.enabled = true;
@@ -19,6 +26,9 @@ export function createViewer(container, theme) {
   camera.up.set(0, 0, 1);
 
   scene.add(new THREE.HemisphereLight(0xffffff, 0xd8cfc4, 1.6));
+  const under = new THREE.DirectionalLight(0xffffff, 0.5); // so the underside isn't flat
+  under.position.set(0.3, 0.6, -1);
+  scene.add(under);
   const sun = new THREE.DirectionalLight(0xffffff, 1.8);
   sun.castShadow = true;
   sun.shadow.mapSize.set(2048, 2048);
@@ -39,7 +49,9 @@ export function createViewer(container, theme) {
   });
   let mesh = null;
 
-  const view = { zoom: 1, elevationDeg: 28, spinning: true, radius: 50, center: new THREE.Vector3() };
+  const view = {
+    zoom: 1, elevationDeg: DEFAULT_ELEVATION, spinning: true, radius: 50, center: new THREE.Vector3(),
+  };
 
   function setGeometry(geometry) {
     if (mesh) { spinner.remove(mesh); mesh.geometry.dispose(); }
@@ -106,7 +118,37 @@ export function createViewer(container, theme) {
   new ResizeObserver(resize).observe(container);
   resize();
 
-  renderer.domElement.addEventListener("click", () => { view.spinning = !view.spinning; });
+  function setElevation(deg) {
+    view.elevationDeg = THREE.MathUtils.clamp(deg, -MAX_ELEVATION, MAX_ELEVATION);
+    placeCamera();
+  }
+
+  // A click toggles spinning; a drag turns and tilts the model and leaves it paused there.
+  const canvas = renderer.domElement;
+  let drag = null;
+  canvas.addEventListener("pointerdown", (e) => {
+    if (e.button !== 0) return;
+    drag = { x: e.clientX, y: e.clientY, moved: false };
+    canvas.setPointerCapture(e.pointerId);
+  });
+  canvas.addEventListener("pointermove", (e) => {
+    if (!drag) return;
+    const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+    if (!drag.moved && Math.hypot(dx, dy) < DRAG_THRESHOLD_PX) return;
+    if (!drag.moved) { drag.moved = true; view.spinning = false; canvas.classList.add("dragging"); }
+    drag.x = e.clientX;
+    drag.y = e.clientY;
+    spinner.rotation.z += THREE.MathUtils.degToRad(dx * DRAG_DEG_PER_PX);
+    setElevation(view.elevationDeg + dy * DRAG_DEG_PER_PX);
+    onElevation?.(view.elevationDeg);
+  });
+  const endDrag = () => {
+    if (drag && !drag.moved) view.spinning = !view.spinning;
+    drag = null;
+    canvas.classList.remove("dragging");
+  };
+  canvas.addEventListener("pointerup", endDrag);
+  canvas.addEventListener("pointercancel", () => { if (drag) drag.moved = true; endDrag(); });
 
   const clock = new THREE.Clock();
   let frames = 0;
@@ -123,11 +165,23 @@ export function createViewer(container, theme) {
     clear,
     get hasModel() { return mesh !== null; },
     setZoom(z) { view.zoom = z; placeCamera(); },
-    setElevation(deg) { view.elevationDeg = deg; placeCamera(); },
+    setElevation,
+    get elevation() { return view.elevationDeg; },
     setSpinning(on) { view.spinning = on; },
+    setTurn(deg) { spinner.rotation.z = THREE.MathUtils.degToRad(deg); },
     get spinning() { return view.spinning; },
     // PNG data URL of the current view (render first: the drawing buffer isn't preserved).
-    snapshot() { renderer.render(scene, camera); return renderer.domElement.toDataURL("image/png"); },
+    // `standard` uses the default zoom and angle, so a project picture never shows the underside.
+    snapshot({ standard = false } = {}) {
+      const saved = { zoom: view.zoom, elevationDeg: view.elevationDeg };
+      if (standard) Object.assign(view, { zoom: 1, elevationDeg: DEFAULT_ELEVATION });
+      placeCamera();
+      renderer.render(scene, camera);
+      const url = renderer.domElement.toDataURL("image/png");
+      Object.assign(view, saved);
+      placeCamera();
+      return url;
+    },
     stats() {
       return { frames, triangles: renderer.info.render.triangles, width: container.clientWidth, height: container.clientHeight };
     },

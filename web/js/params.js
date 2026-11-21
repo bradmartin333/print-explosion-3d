@@ -43,15 +43,16 @@ function control(p, onEdit) {
       row.append(slider);
     }
     row.append(num);
-    // Lengths are labelled "in mm" in the design's comment; show inches next to them.
+    // Lengths are labelled "in mm" in the design's comment; show inches next to them. Other
+    // rows get an empty one, so the number boxes line up in a column.
+    const inches = el("span", { class: "inches" });
+    row.append(inches);
     if (/\bmm\b/i.test(`${p.description} ${p.label}`)) {
-      const inches = el("span", { class: "inches" });
       const show = () => { inches.textContent = `≈ ${(+num.value / 25.4).toFixed(2)} in`; };
       show();
       num.addEventListener("input", show);
       slider?.addEventListener("input", show);
       num.addEventListener("change", show);
-      row.append(inches);
     }
     const clamp = (v) => Math.min(p.max ?? Infinity, Math.max(p.min ?? -Infinity, v));
     slider?.addEventListener("input", () => { num.value = slider.value; onEdit(p.name, +slider.value); });
@@ -86,4 +87,5 @@ export function renderParams(container, sections, onEdit) {
     for (const p of s.params) box.append(control(p, onEdit));
     container.append(box);
   }
+  container.classList.toggle("has-inches", !!container.querySelector(".inches:not(:empty)"));
 }

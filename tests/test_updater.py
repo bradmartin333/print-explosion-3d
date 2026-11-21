@@ -81,3 +81,17 @@ def test_not_a_repo_or_offline(tmp_path, repos):
     _, clone = repos
     git(clone, "remote", "set-url", "origin", str(tmp_path / "gone"))
     assert not updater.check(clone).available
+
+
+def test_relaunch_reopens_the_dock_app(tmp_path):
+    app = tmp_path / "Print Explosion 3D.app"
+    assert updater.relaunch_command(tmp_path, app) == ["/usr/bin/open", "-n", str(app)]
+
+
+def test_relaunch_falls_back_to_the_launch_script(tmp_path):
+    script = tmp_path / "scripts" / "launch.sh"
+    script.parent.mkdir()
+    script.write_text("#!/bin/bash\n")
+    assert updater.relaunch_command(tmp_path, None) == ["/bin/bash", str(script)]
+    script.unlink()
+    assert updater.relaunch_command(tmp_path, None)[1:] == ["-m", "print_explosion_3d.app"]

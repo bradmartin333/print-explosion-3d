@@ -1,11 +1,18 @@
 # Screenshots
 
-Placeholders referenced from the main README. Add these PNGs (about 1600 px wide) when the app is done:
+Used by the main README. Regenerate them from the real window with:
 
-- `hero.png`: full window mid-design
-- `chat.png`: conversation with a photo, "Design updated" chip, quick replies
-- `adjust.png`: Adjust panel next to the model
-- `projects.png`: project switcher and autosave status
-- `bambu.png`: model open in Bambu Studio
+```sh
+uv run python scripts/screenshots.py      # writes hero, chat, adjust and projects PNGs here
+```
 
-`uv run python scripts/smoke_ui.py` writes `build/smoke.png`, which is handy for the viewer.
+It seeds a throwaway workspace with the designs in `scripts/demo/`, builds them with OpenSCAD, and
+plays a short chat through the real UI with a scripted designer (no API key, no credits). Captures
+come from WebKit's own page snapshot, so no Screen Recording permission is needed.
+
+- `hero.png`: full window mid-design (scaled to 1600 px wide)
+- `chat.png`: conversation with a photo, "Design updated" chips, quick replies
+- `adjust.png`: Adjust panel next to the model (scaled to 1600 px wide)
+- `projects.png`: project switcher with pictures
+
+`uv run python scripts/smoke_ui.py` writes a full-window `build/smoke.png` for quick checks.

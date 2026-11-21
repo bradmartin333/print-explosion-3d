@@ -1,6 +1,6 @@
 [project]
 name = "print-explosion-3d"
-version = "0.1.0"
+version = "0.5.0"
 description = "Chat-to-3D-print Mac app: describe a thing, tweak it, send it to Bambu Studio."
 readme = "README.md"
 authors = [

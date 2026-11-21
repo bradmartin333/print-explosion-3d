@@ -15,7 +15,7 @@ cat >"$APP/Contents/Info.plist" <<PLIST
 <plist version="1.0"><dict>
   <key>CFBundleName</key><string>$NAME</string>
   <key>CFBundleDisplayName</key><string>$NAME</string>
-  <key>CFBundleIdentifier</key><string>com.printexplosion3d.launcher</string>
+  <key>CFBundleIdentifier</key><string>com.printexplosion3d.launcher</string><!-- = macos.LAUNCHER_BUNDLE_ID -->
   <key>CFBundleExecutable</key><string>launch</string>
   <key>CFBundleIconFile</key><string>icon</string>
   <key>CFBundlePackageType</key><string>APPL</string>

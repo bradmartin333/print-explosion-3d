@@ -11,8 +11,12 @@ from __future__ import annotations
 import ctypes
 import logging
 import sys
+from pathlib import Path
 
 log = logging.getLogger(__name__)
+
+# Must match CFBundleIdentifier in scripts/make_launcher.sh.
+LAUNCHER_BUNDLE_ID = "com.printexplosion3d.launcher"
 
 _CORE_SERVICES = "/System/Library/Frameworks/CoreServices.framework/CoreServices"
 _LS_DEFAULT_SESSION = -2  # kLSDefaultSessionID
@@ -44,6 +48,28 @@ def brand_process(name: str) -> None:
         _set_launchservices_display_name(name)
     except Exception as exc:  # private API: anything can happen on a future macOS
         log.debug("LaunchServices rename unavailable: %s", exc)
+
+
+def launcher_app() -> Path | None:
+    """The Dock launcher .app this process was opened from, or None (terminal, tests).
+
+    LaunchServices ties `uv run`'s Python child to the launcher bundle, so the Dock shows one
+    icon. A relaunch must go back through that bundle to keep it that way.
+    """
+    if sys.platform != "darwin":
+        return None
+    try:
+        import AppKit
+
+        me = AppKit.NSRunningApplication.currentApplication()
+        url = me.bundleURL()
+        if me.bundleIdentifier() != LAUNCHER_BUNDLE_ID or url is None:
+            return None
+        path = Path(str(url.path()))
+        return path if path.suffix == ".app" and path.is_dir() else None
+    except Exception as exc:
+        log.debug("launcher bundle lookup failed: %s", exc)
+        return None
 
 
 def _set_launchservices_display_name(name: str) -> None:

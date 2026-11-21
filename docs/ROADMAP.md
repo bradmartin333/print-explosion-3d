@@ -51,8 +51,10 @@ Architecture and conventions live in `CLAUDE.md`; this file is just the checklis
 - [x] Dock launcher: generated `~/Applications/Print Explosion 3D.app` (Info.plist, `.icns` from
       `assets/icon.png` via `sips` + `iconutil`); its executable only calls `scripts/launch.sh` in the
       repo so launch logic updates via git. Logs to `~/Library/Logs/PrintExplosion3D`
-- [ ] Verify with `lsappinfo` that the Dock shows one icon when the launcher hands off to Python;
-      if it shows two, fall back to a tiny compiled stub (clang ships with git's CLT)
+- [x] Verify with `lsappinfo` that the Dock shows one icon when the launcher hands off to Python:
+      it does (LaunchServices ties `uv run`'s child to the bundle; no compiled stub needed). The
+      other "Print Explosion 3D …" rows in `lsappinfo list` are WebKit helpers, never in the Dock.
+      The relaunch after "Update now" reopens the Dock app (`open -n`), so it stays one icon too
 - [ ] Optional (ask Brad first): install script pins the launcher to her Dock
 - [x] Update check on start: background `git fetch origin main` (short timeout, silent offline);
       offer an update only if `main` is ahead, fast-forwardable, and the working tree is clean
@@ -65,3 +67,7 @@ Architecture and conventions live in `CLAUDE.md`; this file is just the checklis
 - [x] Project thumbnails via `viewer.snapshot()`
 - [x] Optional cost readout (`PE_SHOW_COST`)
 - [x] Inch hints next to mm values
+- [x] Drag the model to turn and tilt it; the angle goes below the ground to see the underside
+      (thumbnails always use the standard angle)
+- [x] Photo and Send buttons stacked beside the message box, matching its height
+- [x] README screenshots generated from the real window (`scripts/screenshots.py`)

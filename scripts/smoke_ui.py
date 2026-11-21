@@ -1,14 +1,14 @@
 """UI smoke test: open the real window on a sample project, check it, save a snapshot, quit.
 
-Works without Screen Recording permission because the PNG comes from the WebGL canvas itself.
-Uses a throwaway workspace, so it never touches real projects and needs neither OpenSCAD nor
-an API key.
+Works without Screen Recording permission: the PNG is WebKit's own snapshot of the page (WebGL
+included), not a screen capture. Uses a throwaway workspace, so it never touches real projects
+and needs neither OpenSCAD nor an API key.
 
     uv run python scripts/smoke_ui.py [out.png]      # default: build/smoke.png (gitignored)
 
 Prints the page state plus the app name macOS reports, as JSON. Exits non-zero if the bridge
-didn't connect, nothing was drawn, the chat/settings didn't fill in, or the process is still
-called "python".
+didn't connect, nothing was drawn, the chat/settings didn't fill in, the message box and its
+buttons aren't the same height, or the process is still called "python".
 """
 
 from __future__ import annotations
@@ -19,11 +19,14 @@ import os
 import struct
 import sys
 import tempfile
+import threading
 import time
 from pathlib import Path
 
 import AppKit
 import webview
+from PyObjCTools import AppHelper
+from webview.platforms.cocoa import BrowserView
 
 from print_explosion_3d.app import TITLE, launch
 from print_explosion_3d.workspace import Workspace
@@ -47,7 +50,10 @@ UI_PROBE = """JSON.stringify({
   controls: document.querySelectorAll('.param').length,
   project: document.getElementById('project-name').textContent,
   // Widgets that share a row must share a height.
-  rows: Object.fromEntries(['.head-row', '.composer-row', '.param .row', '.actions'].map((sel) => [
+  composer: ['prompt', 'attach'].map((id) => Math.round(
+    document.getElementById(id).getBoundingClientRect().height)).concat(Math.round(
+    document.querySelector('.composer-btns').getBoundingClientRect().height)),
+  rows: Object.fromEntries(['.head-row', '.param .row', '.actions'].map((sel) => [
     sel,
     [...new Set([...document.querySelectorAll(
       [' > button', ' > input', ' > select'].map((t) => sel + t).join(','))]
@@ -85,6 +91,30 @@ def seed_workspace(root: Path) -> None:
     )
 
 
+def window_png(window: webview.Window, timeout: float = 10) -> bytes | None:
+    """The whole page as a PNG at screen resolution, via WKWebView's own snapshot.
+
+    Needs no Screen Recording permission and includes the WebGL canvas. Call off the main thread.
+    """
+    done = threading.Event()
+    out: list[bytes] = []
+
+    def handler(image, error) -> None:
+        if image is not None:
+            rep = AppKit.NSBitmapImageRep.imageRepWithData_(image.TIFFRepresentation())
+            png = rep.representationUsingType_properties_(AppKit.NSBitmapImageFileTypePNG, {})
+            out.append(bytes(png))
+        done.set()
+
+    def snap() -> None:
+        webview_ = BrowserView.instances[window.uid].webview
+        webview_.takeSnapshotWithConfiguration_completionHandler_(None, handler)
+
+    AppHelper.callAfter(snap)
+    done.wait(timeout)
+    return out[0] if out else None
+
+
 def probe(window: webview.Window, out: Path, result: dict) -> None:
     try:
         window.events.loaded.wait(BOOT_TIMEOUT_S)
@@ -106,9 +136,12 @@ def probe(window: webview.Window, out: Path, result: dict) -> None:
         result["state"] = state
         result["ui"] = json.loads(window.evaluate_js(UI_PROBE))
         if state:
-            data_url = window.evaluate_js("window.__pe.viewer.snapshot()")
+            png = window_png(window)
+            if png is None:  # fall back to the 3D view alone
+                data_url = window.evaluate_js("window.__pe.viewer.snapshot()")
+                png = base64.b64decode(data_url.split(",", 1)[1])
             out.parent.mkdir(parents=True, exist_ok=True)
-            out.write_bytes(base64.b64decode(data_url.split(",", 1)[1]))
+            out.write_bytes(png)
             result["snapshot"] = str(out)
     finally:
         window.destroy()
@@ -130,6 +163,7 @@ def main() -> int:
         and result.get("app_name") == TITLE
         and ui.get("chip") is True
         and ui.get("controls", 0) >= 3
+        and len(set(ui.get("composer", [0, 1])[::2])) == 1  # message box = button stack
     )
     return 0 if ok else 1
 

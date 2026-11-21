@@ -69,7 +69,8 @@ html, body {
 /* Viewer */
 .viewer { position: relative; background: var(--bg); }
 .stage { position: absolute; inset: 0; }
-.stage canvas { display: block; cursor: pointer; }
+.stage canvas { display: block; cursor: grab; touch-action: none; }
+.stage canvas.dragging { cursor: grabbing; }
 .viewer-hint {
   position: absolute; top: 12px; left: 50%; transform: translateX(-50%);
   color: var(--muted); font-size: 12px; pointer-events: none; transition: opacity .6s;
@@ -122,8 +123,11 @@ button.icon { padding: 0; width: var(--control-h); font-size: 16px; }
 .choices button:hover { background: #fdf0e1; }
 .composer { flex-direction: column; gap: 8px; }
 .composer-row { display: flex; gap: 8px; align-items: stretch; }
-.composer-row textarea { min-height: calc(var(--control-h) * 2); }
-.composer-row button { height: var(--control-h); align-self: flex-end; }
+.composer-btns { display: flex; flex-direction: column; gap: 8px; width: 76px; }
+.composer-btns button { flex: 1; min-height: var(--control-h); padding: 0; }
+.composer-row textarea { min-height: calc(var(--control-h) * 2 + 8px); }
+/* Focus shows inside the border, so the box's edges stay level with the buttons beside it. */
+.composer textarea:focus { outline: none; border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
 .attachments { display: flex; flex-wrap: wrap; gap: 8px; }
 .attachments .thumb { position: relative; }
 .attachments img { width: 56px; height: 56px; object-fit: cover; border-radius: 8px; display: block; }
@@ -196,3 +200,4 @@ button.icon { padding: 0; width: var(--control-h); font-size: 16px; }
 .project-menu .thumb-img { width: 44px; height: 44px; border-radius: 8px; flex: none; }
 .project-menu .nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
 .param .inches { color: var(--muted); font-size: 12px; white-space: nowrap; min-width: 52px; }
+.param-list:not(.has-inches) .inches { display: none; }

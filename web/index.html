@@ -49,9 +49,11 @@
       <form class="composer" id="composer">
         <div class="attachments" id="attachments" hidden></div>
         <div class="composer-row">
-          <button class="icon ghost" id="attach" type="button" title="Add a photo" aria-label="Add a photo">📷</button>
           <textarea id="prompt" rows="2" placeholder="Tell me what you'd like to make…"></textarea>
-          <button type="submit" id="send">Send</button>
+          <div class="composer-btns">
+            <button class="ghost" id="attach" type="button" title="Add a photo" aria-label="Add a photo">📷</button>
+            <button type="submit" id="send">Send</button>
+          </div>
         </div>
         <input type="file" id="file-input" accept="image/*" multiple hidden>
       </form>
@@ -61,10 +63,10 @@
       <div class="stage" id="stage"></div>
       <div class="viewer-empty" id="viewer-empty">Your design will show up here.</div>
       <div class="busy" id="busy" hidden><span class="spinner"></span><span id="busy-text">Working…</span></div>
-      <div class="viewer-hint" id="viewer-hint">Click the model to pause spinning</div>
+      <div class="viewer-hint" id="viewer-hint">Drag the model to turn it. Click it to pause spinning.</div>
       <div class="viewer-controls">
         <label>Zoom <input type="range" id="zoom" min="0.5" max="2.5" step="0.01" value="1"></label>
-        <label>Angle <input type="range" id="angle" min="5" max="85" step="1" value="28"></label>
+        <label>Angle <input type="range" id="angle" min="-85" max="85" step="1" value="28"></label>
       </div>
     </section>
 

@@ -10,7 +10,6 @@
   No CAD knowledge, no accounts, no jargon.
 </p>
 
-<!-- SCREENSHOT: hero. Full window mid-design: chat on the left, spinning model in the middle, Adjust panel on the right. -->
 ![Print Explosion 3D main window](docs/screenshots/hero.png)
 
 ## Why this exists
@@ -27,24 +26,20 @@ easy-to-install, easy-to-update, easy-to-use version, where she can make fun stu
 ## How it works
 1. **Tell it what you want.** Type it, or drop in a photo ("something like this, but for my
    spice jars"). Any units and everyday words are fine.
-2. **Watch it appear.** The model shows up in the middle and slowly spins. Click it to pause, and use
-   the sliders to look from a different angle.
+2. **Watch it appear.** The model shows up in the middle and slowly spins. Click it to pause it, or
+   drag it to turn it around and look underneath. The sliders zoom and change the angle too.
 3. **Tweak it.** Sizes and options show up on the right as simple boxes, sliders and dropdowns. Change
    one, press **Update the model**, and see it again.
 4. **Print it.** **Save for printing** gives you an STL file, or **Open in Bambu Studio** sends it
    straight to the slicer.
 
-<!-- SCREENSHOT: chat. A short conversation with a photo attached, a "Design updated" chip, and quick-reply buttons. -->
-![Chatting with the designer](docs/screenshots/chat.png)
+<p align="center">
+  <img src="docs/screenshots/chat.png" alt="Chatting with the designer: a photo, a design update and quick-reply buttons" width="380">
+  &nbsp;
+  <img src="docs/screenshots/projects.png" alt="Switching between saved projects, each with a picture" width="390" align="top">
+</p>
 
-<!-- SCREENSHOT: adjust. The Adjust panel with sliders, a dropdown and a checkbox, next to the spinning model. -->
-![Adjusting a design](docs/screenshots/adjust.png)
-
-<!-- SCREENSHOT: projects. The project switcher listing a few saved projects, plus the autosave status. -->
-![Switching between projects](docs/screenshots/projects.png)
-
-<!-- SCREENSHOT: bambu. The finished model open in Bambu Studio. -->
-![Open in Bambu Studio](docs/screenshots/bambu.png)
+![Adjusting a design: sliders, a dropdown and a checkbox next to the model](docs/screenshots/adjust.png)
 
 ## What it's built for
 - **Easy prints.** Designs fit the A1 mini's 180 mm bed, sit flat, avoid supports, and have a small

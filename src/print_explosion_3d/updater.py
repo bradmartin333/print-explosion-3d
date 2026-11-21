@@ -2,7 +2,8 @@
 
 `check()` is silent on any failure (offline, not a git checkout, dev tree with changes) and only
 reports an update when `origin/main` is ahead, fast-forwardable and the working tree is clean.
-`apply()` pulls, syncs dependencies and relaunches through `scripts/launch.sh`.
+`apply()` pulls and syncs dependencies; `relaunch()` restarts through the Dock app or
+`scripts/launch.sh`.
 """
 
 from __future__ import annotations
@@ -15,6 +16,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from print_explosion_3d.config import REPO_ROOT
+from print_explosion_3d.macos import launcher_app
 
 BRANCH = "main"
 FETCH_TIMEOUT = 8
@@ -94,12 +96,24 @@ def apply(repo: Path = REPO_ROOT) -> bool:
         return False
 
 
+def relaunch_command(repo: Path, app: Path | None) -> list[str]:
+    """How to start a fresh copy.
+
+    Opened from the Dock app: reopen that app through LaunchServices (`-n`, since this copy is
+    still running), so the new window stays under the same Dock icon. A plain child process
+    would get a second icon. Otherwise run the launch script, or the module as a last resort.
+    """
+    if app is not None:
+        return ["/usr/bin/open", "-n", str(app)]
+    script = repo / "scripts" / "launch.sh"
+    if script.exists():
+        return ["/bin/bash", str(script)]
+    return [sys.executable, "-m", "print_explosion_3d.app"]
+
+
 def relaunch(repo: Path = REPO_ROOT) -> None:
     """Start a fresh copy through the launcher, then quit this one."""
-    script = repo / "scripts" / "launch.sh"
-    cmd = ["/bin/bash", str(script)]
-    if not script.exists():
-        cmd = [sys.executable, "-m", "print_explosion_3d.app"]
+    cmd = relaunch_command(repo, launcher_app())
     quiet = subprocess.DEVNULL
     subprocess.Popen(cmd, cwd=repo, start_new_session=True, stdout=quiet, stderr=quiet)
     os._exit(0)

@@ -123,7 +123,7 @@ function saveThumbnail() {
       c.getContext("2d").drawImage(src, 0, 0, c.width, c.height);
       if (await state.api.save_thumbnail(c.toDataURL("image/png"))) renderSwitcher();
     };
-    src.src = viewer.snapshot();
+    src.src = viewer.snapshot({ standard: true });
   } catch (err) { console.error(err); }
 }
 
@@ -348,7 +348,7 @@ async function boot() {
   document.documentElement.style.setProperty("--bg", theme.bg_color);
   document.documentElement.style.setProperty("--accent", theme.model_color);
 
-  viewer = createViewer($("stage"), theme);
+  viewer = createViewer($("stage"), theme, { onElevation: (deg) => { $("angle").value = deg; } });
   chat = createChat($("messages"), { onChoice: (c) => send(c) });
   $("zoom").addEventListener("input", (e) => viewer.setZoom(+e.target.value));
   $("angle").addEventListener("input", (e) => viewer.setElevation(+e.target.value));
@@ -364,9 +364,10 @@ async function boot() {
     if (!first.has_key) chat.addInfo("To chat with me, this app needs its AI key. Ask Brad to set it up.");
   }
 
-  // Hook for scripts/smoke_ui.py (and later, project thumbnails).
+  // Hook for scripts/smoke_ui.py and scripts/screenshots.py.
   window.__pe = {
     viewer,
+    thumbnail: saveThumbnail,
     state: () => ({ status: status.textContent, bootError, ...viewer.stats() }),
   };
 }

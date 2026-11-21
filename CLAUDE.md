@@ -19,13 +19,15 @@ uv run pytest -m live_api                 # opt-in tests that SPEND CREDITS
 uv run ruff check --fix && uv run ruff format
 uv run ty check
 uv run python scripts/smoke_ui.py        # real window: bridge, WebGL, app name; PNG → build/smoke.png
+uv run python scripts/screenshots.py     # README screenshots → docs/screenshots/ (needs OpenSCAD)
 uv run python scripts/make_icon.py       # regenerate assets/icon.svg + icon.png
 uv run python -m print_explosion_3d.config  # print a commented .env template (all keys + defaults)
 scripts/vendor_three.sh [ver]             # re-vendor Three.js (pinned 0.170.0)
 scripts/update_openscad_skill.sh <ref>    # refresh third_party/openscad-skill snapshot
 ```
 Run ruff, ty and pytest before calling work done. UI changes also get `scripts/smoke_ui.py`. Look
-at the PNG: screencapture isn't available here (no Screen Recording permission).
+at the PNG. It's WebKit's own snapshot of the whole window, because screencapture isn't available
+here (no Screen Recording permission).
 
 ## Layout
 - `src/print_explosion_3d/`
