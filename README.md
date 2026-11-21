@@ -1,4 +1,4 @@
-# print-explosion-3d
+# Print Explosion 3D
 Remember Print Explosion? Time to have some fun with AI and 3D prints.
 
 # Motivation
