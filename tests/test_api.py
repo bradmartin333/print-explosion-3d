@@ -213,3 +213,17 @@ def test_cost_readout_is_opt_in(tmp_path):
     on = Harness(tmp_path / "b")
     on.api._settings = load_settings({"PE_WORKSPACE_DIR": str(tmp_path / "b"), "PE_SHOW_COST": "1"})
     assert on.api.cost_text() == "AI cost this time: about $0.00"
+
+
+def test_update_check_can_be_turned_off(tmp_path, monkeypatch):
+    from print_explosion_3d import updater
+
+    calls = []
+    monkeypatch.setattr(
+        updater, "check", lambda: calls.append(1) or updater.UpdateInfo(True, "- x")
+    )
+    h = Harness(tmp_path)
+    assert h.api.check_update() == {"available": True, "notes": "- x"}
+    h.api._settings = load_settings({"PE_WORKSPACE_DIR": str(tmp_path), "PE_UPDATE_CHECK": "false"})
+    assert h.api.check_update() == {"available": False, "notes": ""}
+    assert len(calls) == 1  # no git fetch at all when it's off

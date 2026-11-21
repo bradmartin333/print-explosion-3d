@@ -19,18 +19,26 @@ drain_hole = true;
 wall = 2;
 floor_t = 2;
 chamfer = 0.6;
+flare = 1.15; // the top is this much wider than the bottom
 $fn = 64;
 
+// The pot's shape at the bottom, with softened corners.
+module outline() offset(r = 2) circle(d = width / flare - 4, $fn = sides);
+
+// Rise h mm with the pot's twist and flare per mm, so the inside follows the outside exactly.
+module rise(h) linear_extrude(h, twist = twist * h / height, slices = 40, scale = 1 + (flare - 1) * h / height) children();
+
 difference() {
-  linear_extrude(height, twist = twist, slices = 40, scale = 1.15)
-    offset(r = 2) circle(d = width / 1.15 - 4, $fn = sides);
-  translate([0, 0, floor_t])
-    linear_extrude(height, twist = twist, slices = 40, scale = 1.15 + 0.06)
-      circle(d = width / 1.15 - 2 * wall, $fn = sides);
+  rise(height) outline();
+  // The inside: the outline shrunk by the wall, starting above the floor and open at the top.
+  intersection() {
+    rise(height + 1) offset(r = -wall) outline();
+    translate([-width, -width, floor_t]) cube([2 * width, 2 * width, height + 2]);
+  }
   if (drain_hole) translate([0, 0, -1]) cylinder(d = 10, h = floor_t + 2);
   // bottom chamfer
   difference() {
     translate([0, 0, -0.01]) cylinder(d = width * 1.5, h = chamfer);
-    translate([0, 0, -0.02]) linear_extrude(chamfer + 0.02, scale = 1.02) offset(r = 2 - chamfer) circle(d = width / 1.15 - 4, $fn = sides);
+    translate([0, 0, -0.02]) linear_extrude(chamfer + 0.02, scale = 1.02) offset(r = -chamfer) outline();
   }
 }

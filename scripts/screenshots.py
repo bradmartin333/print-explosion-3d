@@ -28,7 +28,7 @@ from smoke_ui import BOOT_TIMEOUT_S, window_png
 from print_explosion_3d.ai.fake_provider import FakeProvider
 from print_explosion_3d.app import launch
 from print_explosion_3d.config import REPO_ROOT, load_settings
-from print_explosion_3d.scad.runner import render
+from print_explosion_3d.scad.runner import find_openscad, render
 from print_explosion_3d.workspace import Workspace
 
 DEMO = Path(__file__).parent / "demo"
@@ -104,11 +104,11 @@ def seed(root: Path) -> None:
         time.sleep(1.1)  # distinct "updated" times keep the project list in this order
 
 
-def photo_jpeg(tmp: Path) -> bytes:
+def photo_jpeg(tmp: Path, openscad: Path) -> bytes:
     """The stand-in photo she shares: spice jars on a shelf, drawn by OpenSCAD."""
     png, jpg = tmp / "jars.png", tmp / "jars.jpg"
     subprocess.run(
-        ["openscad", "-o", png, "--imgsize=900,900", "--camera=0,10,70,62,0,0,560",
+        [openscad, "-o", png, "--imgsize=900,900", "--camera=0,10,70,62,0,0,560",
          "--projection=p", "--colorscheme=Nature", DEMO / "spice_jars_photo.scad"],
         check=True, capture_output=True,
     )  # fmt: skip
@@ -135,11 +135,20 @@ def wait_for(window: webview.Window, expr: str, timeout: float = BOOT_TIMEOUT_S)
     raise TimeoutError(f"Timed out waiting for: {expr}")
 
 
-def model_ready(window: webview.Window, name: str) -> None:
+def loads(window: webview.Window) -> int:
+    """How many models the viewer has shown so far."""
+    return int(js(window, "window.__pe.state().loads"))
+
+
+def model_ready(window: webview.Window, name: str, after: int) -> None:
+    """Wait until `name` is open and a model newer than load number `after` is on screen.
+
+    The name changes before the new model arrives, so the name alone could still mean the last
+    project's model."""
     wait_for(
         window,
         f"document.getElementById('project-name').textContent === {json.dumps(name)}"
-        " && window.__pe.viewer.hasModel",
+        f" && window.__pe.state().loads > {after}",
     )
     time.sleep(0.5)  # a few frames
 
@@ -152,18 +161,23 @@ def settle_view(window: webview.Window, turn: float) -> None:
 def make_thumbnails(window: webview.Window, root: Path) -> None:
     """Open each seeded project in the UI and save its picture, as a real build would."""
     for name, *_ in SEEDED:
+        # The project open at start-up already shows its own model; any other needs a new one.
+        current = js(window, "document.getElementById('project-name').textContent")
+        before = loads(window) - (1 if current == name else 0)
         js(
             window,
             "[...document.querySelectorAll('#project-menu li')]"
             f".find((li) => li.querySelector('.nm').textContent === {json.dumps(name)}).click()",
         )
-        model_ready(window, name)
+        model_ready(window, name, before)
         settle_view(window, -30)
         js(window, "window.__pe.thumbnail()")
         folder = next(p.folder for p in Workspace(root).list_projects() if p.name == name)
         thumb = root / folder / "thumbnail.png"
         deadline = time.monotonic() + BOOT_TIMEOUT_S
-        while not thumb.is_file() and time.monotonic() < deadline:
+        while not thumb.is_file():
+            if time.monotonic() > deadline:
+                raise TimeoutError(f"No picture was saved for {name}")
             time.sleep(0.2)
 
 
@@ -224,8 +238,9 @@ def crop(png: bytes, box: tuple[float, ...], scale: float) -> bytes:
 
 
 def save(path: Path, png: bytes, max_width: int | None = None) -> None:
+    """Write the PNG, scaling it down (never up) to `max_width` pixels."""
     path.write_bytes(png)
-    if max_width:
+    if max_width and AppKit.NSBitmapImageRep.imageRepWithData_(png).pixelsWide() > max_width:
         subprocess.run(
             ["sips", "--resampleWidth", str(max_width), str(path)], check=True, capture_output=True
         )
@@ -245,9 +260,10 @@ def shoot(window: webview.Window, out_dir: Path, root: Path, jpeg: bytes, result
         js(window, f"document.getElementById('prompt').value = {json.dumps(ASK)}")
         js(window, "document.getElementById('composer').requestSubmit()")
         turn_finished(window, 1)
+        before = loads(window)
         js(window, "document.querySelector('.choices button').click()")
         turn_finished(window, 2)
-        model_ready(window, "Spice Rack")
+        model_ready(window, "Spice Rack", before)
         settle_view(window, -32)
         js(window, "document.activeElement.blur()")
 
@@ -278,16 +294,20 @@ def shoot(window: webview.Window, out_dir: Path, root: Path, jpeg: bytes, result
 
 def main() -> int:
     out_dir = Path(sys.argv[1] if len(sys.argv) > 1 else REPO_ROOT / "docs" / "screenshots")
+    openscad = find_openscad(load_settings().openscad_bin)
+    if openscad is None:
+        raise SystemExit("OpenSCAD 2025+ not found: install it or set OPENSCAD_BIN.")
     result: dict = {}
     with tempfile.TemporaryDirectory(prefix="pe-shots-") as tmp:
         root = Path(tmp) / "projects"
         os.environ.update(
             PE_WORKSPACE_DIR=str(root),  # never touch her real projects
             PE_SHOW_COST="false",
+            PE_UPDATE_CHECK="false",  # no git fetch, so no update banner in the pictures
             ANTHROPIC_API_KEY="unused-the-designer-is-scripted",  # hides the "needs a key" note
         )
         seed(root)
-        jpeg = photo_jpeg(Path(tmp))
+        jpeg = photo_jpeg(Path(tmp), openscad)
         rack = (DEMO / "spice_rack.scad").read_text()
         two_steps = rack.replace("steps = 3; //", "steps = 2; //", 1)
         designer = FakeProvider([REPLY_1.format(scad=two_steps), REPLY_2.format(scad=rack)])

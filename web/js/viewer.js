@@ -53,7 +53,10 @@ export function createViewer(container, theme, { onElevation } = {}) {
     zoom: 1, elevationDeg: DEFAULT_ELEVATION, spinning: true, radius: 50, center: new THREE.Vector3(),
   };
 
+  let loads = 0; // models shown so far, so scripts can tell a new model from the last one
+
   function setGeometry(geometry) {
+    loads += 1;
     if (mesh) { spinner.remove(mesh); mesh.geometry.dispose(); }
     geometry.computeBoundingBox();
     const box = geometry.boundingBox;
@@ -127,12 +130,13 @@ export function createViewer(container, theme, { onElevation } = {}) {
   const canvas = renderer.domElement;
   let drag = null;
   canvas.addEventListener("pointerdown", (e) => {
-    if (e.button !== 0) return;
+    if (e.button !== 0 || e.ctrlKey) return; // ctrl-click is a right-click on a Mac
     drag = { x: e.clientX, y: e.clientY, moved: false };
     canvas.setPointerCapture(e.pointerId);
   });
   canvas.addEventListener("pointermove", (e) => {
     if (!drag) return;
+    if ((e.buttons & 1) === 0) { cancelDrag(); return; } // the button-up never reached us
     const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
     if (!drag.moved && Math.hypot(dx, dy) < DRAG_THRESHOLD_PX) return;
     if (!drag.moved) { drag.moved = true; view.spinning = false; canvas.classList.add("dragging"); }
@@ -147,8 +151,12 @@ export function createViewer(container, theme, { onElevation } = {}) {
     drag = null;
     canvas.classList.remove("dragging");
   };
+  // A drag that ends without a proper button-up (focus lost, a menu popped up) leaves the model
+  // where it is: no spin toggle.
+  const cancelDrag = () => { if (drag) drag.moved = true; endDrag(); };
   canvas.addEventListener("pointerup", endDrag);
-  canvas.addEventListener("pointercancel", () => { if (drag) drag.moved = true; endDrag(); });
+  canvas.addEventListener("pointercancel", cancelDrag);
+  canvas.addEventListener("lostpointercapture", cancelDrag); // after pointerup, drag is already null
 
   const clock = new THREE.Clock();
   let frames = 0;
@@ -183,7 +191,7 @@ export function createViewer(container, theme, { onElevation } = {}) {
       return url;
     },
     stats() {
-      return { frames, triangles: renderer.info.render.triangles, width: container.clientWidth, height: container.clientHeight };
+      return { frames, loads, triangles: renderer.info.render.triangles, width: container.clientWidth, height: container.clientHeight };
     },
   };
 }

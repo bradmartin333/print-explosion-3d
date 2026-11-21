@@ -41,6 +41,8 @@ function control(p, onEdit) {
       slider = el("input", { type: "range", min: p.min, max: p.max, step, value: p.value });
       slider.setAttribute("aria-label", p.label);
       row.append(slider);
+    } else {
+      row.append(el("span", { class: "spacer" })); // takes the slider's place in the column
     }
     row.append(num);
     // Lengths are labelled "in mm" in the design's comment; show inches next to them. Other

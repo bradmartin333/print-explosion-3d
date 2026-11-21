@@ -25,6 +25,8 @@ DOTENV_PATH = REPO_ROOT / ".env"
 
 EFFORT_LEVELS = ("low", "medium", "high", "xhigh", "max")
 _HEX_COLOR = re.compile(r"^#[0-9a-fA-F]{6}$")
+_YES = {"1", "true", "yes", "on"}
+_NO = {"0", "false", "no", "off"}
 
 
 @dataclass(frozen=True, slots=True)
@@ -45,6 +47,7 @@ SPEC: tuple[Setting, ...] = (
     Setting("PE_WORKSPACE_DIR", "", "Projects. Empty = ~/Documents/Print Explosion 3D", "Files"),
     Setting("OPENSCAD_BIN", "", "OpenSCAD binary. Empty = PATH, then /Applications.", "Files"),
     Setting("PE_RENDER_TIMEOUT", "120", "Seconds before a build is given up (5 to 600).", "Files"),
+    Setting("PE_UPDATE_CHECK", "true", "Check for a new version on start.", "App"),
     Setting("PE_MODEL_COLOR", "#f2a65a", "Viewer model color (#rrggbb).", "Theme"),
     Setting("PE_BG_COLOR", "#f7f3ee", "Viewer background color (#rrggbb).", "Theme"),
     Setting("PE_SHADOW_OPACITY", "0.18", "Ground shadow darkness, 0 to 1.", "Theme"),
@@ -72,6 +75,7 @@ class Settings:
     workspace_dir: Path
     openscad_bin: str | None
     render_timeout: float
+    update_check: bool
     theme: Theme
 
 
@@ -96,6 +100,12 @@ def load_settings(env: Mapping[str, str | None] | None = None) -> Settings:
         value = raw(key)
         return value if _HEX_COLOR.match(value) else _DEFAULTS[key]
 
+    def flag(key: str) -> bool:
+        value = raw(key).lower()
+        if value in _YES or value in _NO:
+            return value in _YES
+        return _DEFAULTS[key] in _YES
+
     effort = raw("PE_EFFORT").lower()
     workspace = raw("PE_WORKSPACE_DIR")
 
@@ -105,7 +115,7 @@ def load_settings(env: Mapping[str, str | None] | None = None) -> Settings:
         model=raw("PE_MODEL"),
         effort=effort if effort in EFFORT_LEVELS else _DEFAULTS["PE_EFFORT"],
         max_auto_fixes=int(number("PE_MAX_AUTO_FIXES", 0, 5)),
-        show_cost=raw("PE_SHOW_COST").lower() in {"1", "true", "yes", "on"},
+        show_cost=flag("PE_SHOW_COST"),
         workspace_dir=(
             Path(workspace).expanduser()
             if workspace
@@ -113,6 +123,7 @@ def load_settings(env: Mapping[str, str | None] | None = None) -> Settings:
         ),
         openscad_bin=raw("OPENSCAD_BIN") or None,
         render_timeout=number("PE_RENDER_TIMEOUT", 5, 600),
+        update_check=flag("PE_UPDATE_CHECK"),
         theme=Theme(
             model_color=color("PE_MODEL_COLOR"),
             bg_color=color("PE_BG_COLOR"),

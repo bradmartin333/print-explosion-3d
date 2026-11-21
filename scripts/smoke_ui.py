@@ -7,8 +7,8 @@ and needs neither OpenSCAD nor an API key.
     uv run python scripts/smoke_ui.py [out.png]      # default: build/smoke.png (gitignored)
 
 Prints the page state plus the app name macOS reports, as JSON. Exits non-zero if the bridge
-didn't connect, nothing was drawn, the chat/settings didn't fill in, the message box and its
-buttons aren't the same height, or the process is still called "python".
+didn't connect, nothing was drawn, the chat/settings didn't fill in, the camera and Send buttons
+don't fill the height of the message box, or the process is still called "python".
 """
 
 from __future__ import annotations
@@ -49,10 +49,11 @@ UI_PROBE = """JSON.stringify({
   chip: !!document.querySelector('.chip'),
   controls: document.querySelectorAll('.param').length,
   project: document.getElementById('project-name').textContent,
-  // Widgets that share a row must share a height.
-  composer: ['prompt', 'attach'].map((id) => Math.round(
-    document.getElementById(id).getBoundingClientRect().height)).concat(Math.round(
-    document.querySelector('.composer-btns').getBoundingClientRect().height)),
+  // The camera and Send buttons are stacked beside the message box: same height as each other,
+  // and together (with the gap between them) as tall as the box.
+  composer: Object.fromEntries(['prompt', 'attach', 'send'].map((id) => [
+    id, document.getElementById(id).getBoundingClientRect().height]).concat([['gap',
+    parseFloat(getComputedStyle(document.querySelector('.composer-btns')).rowGap) || 0]])),
   rows: Object.fromEntries(['.head-row', '.param .row', '.actions'].map((sel) => [
     sel,
     [...new Set([...document.querySelectorAll(
@@ -152,6 +153,7 @@ def main() -> int:
     result: dict = {}
     with tempfile.TemporaryDirectory(prefix="pe-smoke-") as tmp:
         os.environ["PE_WORKSPACE_DIR"] = tmp  # never touch her real projects
+        os.environ["PE_UPDATE_CHECK"] = "false"  # no git fetch, no update banner
         seed_workspace(Path(tmp))
         launch(probe, out, result)
     print(json.dumps(result, indent=2))
@@ -163,9 +165,17 @@ def main() -> int:
         and result.get("app_name") == TITLE
         and ui.get("chip") is True
         and ui.get("controls", 0) >= 3
-        and len(set(ui.get("composer", [0, 1])[::2])) == 1  # message box = button stack
+        and composer_lines_up(ui.get("composer"))
     )
     return 0 if ok else 1
+
+
+def composer_lines_up(sizes: dict | None) -> bool:
+    """Both buttons the same height, and together as tall as the message box (±1 px)."""
+    if not sizes:
+        return False
+    box, attach, send, gap = (sizes.get(k, 0) for k in ("prompt", "attach", "send", "gap"))
+    return attach > 0 and abs(attach - send) <= 1 and abs(attach + gap + send - box) <= 1
 
 
 if __name__ == "__main__":

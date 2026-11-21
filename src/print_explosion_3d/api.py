@@ -159,6 +159,8 @@ class Api:
 
     def check_update(self) -> dict[str, Any]:
         """Silent check; the page shows the banner only if `available`."""
+        if not self._settings.update_check:
+            return {"available": False, "notes": ""}
         info = updater.check()
         return {"available": info.available, "notes": info.notes}
 

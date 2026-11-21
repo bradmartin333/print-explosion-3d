@@ -115,9 +115,9 @@ The prose must not contain code. The UI hides the code block behind a "Design up
 ## README
 Keep `README.md` up to date as the repo evolves. When a change affects what the app does, how it's
 installed or run, its settings, or its screenshots, update the README in the same change. It is the
-public face of the project: plain English first, technical detail last. Screenshots are placeholders
-in `docs/screenshots/` until the app is finished; replace them (and the `<!-- SCREENSHOT -->`
-comments) as real ones land.
+public face of the project: plain English first, technical detail last. The screenshots in
+`docs/screenshots/` come from `scripts/screenshots.py`, which runs the real app on the demo designs in
+`scripts/demo/`. Re-run it when the UI or those designs change.
 
 ## Git
 Work on the current branch. Ask before creating a worktree, and if one is used, merge it back,

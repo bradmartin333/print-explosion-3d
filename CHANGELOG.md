@@ -3,11 +3,15 @@
 Plain-English notes for Mom. The newest entry goes at the top; the app's update banner shows it.
 Write what she'll notice, not how it was built.
 
+## 0.5.1
+- The model no longer keeps turning by itself after you right-click it.
+- In the Adjust panel, every number box now lines up in the same column, even ones without a slider.
+
 ## 0.5.0
 - Drag the model to turn it around or tilt it. You can now look underneath it too, with your mouse or the Angle slider.
 - The camera and Send buttons sit together beside the message box.
 - In the Adjust panel, the number boxes line up in a neat column.
-- After "Update now", the app reopens under its own Dock icon instead of showing a second one.
+- Starting with the next update, "Update now" reopens the app under its own Dock icon instead of showing a second one.
 
 ## 0.4.0
 - Your projects now show a little picture of what you made when you pick one from the list at the top.

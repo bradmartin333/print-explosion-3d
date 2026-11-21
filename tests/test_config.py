@@ -8,12 +8,15 @@ def test_defaults_when_env_is_empty():
     assert s.anthropic_api_key is None
     assert s.provider == "anthropic"
     assert s.model == "claude-sonnet-5-5"
+    assert s.show_cost is False
+    assert s.update_check is True
     assert s.effort == "medium"
     assert s.max_auto_fixes == 2
     assert s.show_cost is False
     assert s.workspace_dir == Path.home() / "Documents" / "Print Explosion 3D"
     assert s.openscad_bin is None
     assert s.render_timeout == 120
+    assert s.update_check is True
     assert s.theme.model_color == "#f2a65a"
 
 
@@ -28,6 +31,7 @@ def test_overrides_apply():
             "PE_WORKSPACE_DIR": "~/elsewhere",
             "PE_MODEL_COLOR": "#123abc",
             "PE_SPIN_SPEED": "1.5",
+            "PE_UPDATE_CHECK": "off",
         }
     )
     assert s.anthropic_api_key == "sk-test"
@@ -38,6 +42,7 @@ def test_overrides_apply():
     assert s.workspace_dir == Path.home() / "elsewhere"
     assert s.theme.model_color == "#123abc"
     assert s.theme.spin_speed == 1.5
+    assert s.update_check is False
 
 
 def test_bad_values_fall_back_instead_of_crashing():
@@ -49,6 +54,8 @@ def test_bad_values_fall_back_instead_of_crashing():
             "PE_SHADOW_OPACITY": "7",
             "PE_RENDER_TIMEOUT": "forever",
             "PE_MODEL": "   ",
+            "PE_SHOW_COST": "maybe",
+            "PE_UPDATE_CHECK": "sometimes",
         }
     )
     assert s.effort == "medium"

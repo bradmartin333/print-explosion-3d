@@ -5,7 +5,7 @@ use <printable-lib.scad>
 // How many jars fit side by side on each step.
 jars_per_row = 3; // [2:3]
 // How wide one jar is, in mm.
-jar_width = 45; // [30:55]
+jar_width = 45; // [30:53]
 // How many steps.
 steps = 3; // [1:3]
 // How much higher each step is than the one in front of it, in mm.
