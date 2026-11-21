@@ -1,8 +1,8 @@
 # Print Explosion 3D
 
 Single-window Mac app: chat (and photos) → OpenSCAD design → spinning preview → simple controls →
-STL / Bambu Studio. The end user is a non-technical parent with a Bambu Lab A1 mini. The README is
-the product spec; `docs/ROADMAP.md` tracks milestones.
+STL / Bambu Studio. The end user is a non-technical parent with a Bambu Lab A1 mini. The app is in
+production; the README is the product spec.
 
 ## Audience rules
 - UI copy is plain English. No "parameters", "SCAD", "render", "manifold" in anything she sees.
@@ -21,7 +21,7 @@ uv run ty check
 uv run python scripts/smoke_ui.py        # real window: bridge, WebGL, app name; PNG → build/smoke.png
 uv run python scripts/screenshots.py     # README screenshots → docs/screenshots/ (needs OpenSCAD)
 uv run python scripts/make_icon.py       # regenerate assets/icon.svg + icon.png
-uv run python -m print_explosion_3d.config  # print a commented .env template (all keys + defaults)
+uv run python -m print_explosion_3d.config > .env.example  # regenerate the settings template
 scripts/vendor_three.sh [ver]             # re-vendor Three.js (pinned 0.170.0)
 scripts/update_openscad_skill.sh <ref>    # refresh third_party/openscad-skill snapshot
 ```
@@ -37,11 +37,11 @@ here (no Screen Recording permission).
     `api.py` is the JS bridge: thin, and only public methods are exposed.
   - `macos.py`: menu bar/Dock name for a bare Python process (CFBundleName + a private
     LaunchServices rename, all failures swallowed). Icon is `assets/icon.png`.
-  - `ai/` (M3): `Provider` protocol, `anthropic_provider.py`, `fake_provider.py`.
-  - `designer/` (M3): system prompt, response-protocol parsing, turn loop with auto-fix.
-  - `scad/`: `runner.py` and `params.py` (M1). `lib/` is on `OPENSCADPATH` and holds
+  - `ai/`: `Provider` protocol, `anthropic_provider.py`, `fake_provider.py`.
+  - `designer/`: system prompt, response-protocol parsing, turn loop with auto-fix.
+  - `scad/`: `runner.py` and `params.py`. `lib/` is on `OPENSCADPATH` and holds
     printable-lib + the A1 mini profile.
-  - `workspace/` (M2) and `bambu.py` (M5).
+  - `workspace/` (projects on disk) and `bambu.py` (open in Bambu Studio).
 - `web/`: vanilla ES modules, no build step. `js/viewer.js` is Three.js (Z-up, shadow, no grid).
   `vendor/three/` is pinned and vendored; don't hand-edit it.
 - `third_party/openscad-skill/`: pinned upstream snapshot (MIT). `PROVENANCE.md` lists which repo
@@ -106,11 +106,12 @@ The prose must not contain code. The UI hides the code block behind a "Design up
 - Every new setting goes in `config.SPEC` with a working default. Only `ANTHROPIC_API_KEY` is
   required.
 - Everything except the AI chat must work offline.
-- Her app updates from `main` (update check + banner, M5), so `main` must always be shippable.
+- Her app updates from `main` (update check + banner), so `main` must always be shippable.
   Any change she'll notice gets a plain-English entry at the top of `CHANGELOG.md`; the
   update banner shows that entry.
-- Note: a permission rule here blocks reading or writing `.env*` files. Use the
-  `config.env_template()` output rather than an `.env.example` file.
+- `.env.example` is generated from `config.SPEC`. After changing `SPEC`, regenerate it with
+  `uv run python -m print_explosion_3d.config > .env.example`. A permission rule here blocks
+  Claude from reading or writing `.env*` files, so ask Brad to run that command.
 
 ## README
 Keep `README.md` up to date as the repo evolves. When a change affects what the app does, how it's

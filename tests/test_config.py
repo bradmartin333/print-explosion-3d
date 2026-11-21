@@ -70,3 +70,11 @@ def test_env_template_lists_every_setting():
     template = env_template()
     for setting in SPEC:
         assert f"{setting.env}={setting.default}" in template
+
+
+def test_env_example_matches_spec():
+    # .env.example is generated from SPEC; regenerate it after changing a setting.
+    example = Path(__file__).parent.parent / ".env.example"
+    assert example.read_text() == env_template(), (
+        "Out of date. Run: uv run python -m print_explosion_3d.config > .env.example"
+    )

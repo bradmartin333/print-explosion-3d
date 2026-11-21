@@ -62,24 +62,26 @@ easy-to-install, easy-to-update, easy-to-use version, where she can make fun stu
 - UI is a pywebview window with a vanilla-JS Three.js viewer. No build step.
 - Projects live in `~/Documents/Print Explosion 3D/`.
 
-Architecture and conventions are in [`CLAUDE.md`](CLAUDE.md). Progress is in
-[`docs/ROADMAP.md`](docs/ROADMAP.md).
+Architecture and conventions are in [`CLAUDE.md`](CLAUDE.md).
 
 ## Running it
 Requires macOS, [uv](https://docs.astral.sh/uv/), OpenSCAD 2025 or newer, and an Anthropic API key
 in `.env` as `ANTHROPIC_API_KEY`.
 
 ```sh
+cp .env.example .env   # then fill in ANTHROPIC_API_KEY
 uv sync
 uv run print-explosion
 ```
 
-Set `PE_SHOW_COST=true` to show a running AI cost estimate in the status bar.
+`.env.example` lists every setting (colors, timeouts, model, and so on) with its default and a short
+comment. Only the API key is required; anything left out uses its default. Set `PE_SHOW_COST=true`
+to show a running AI cost estimate in the status bar.
 
-Print a commented template of every setting (colors, timeouts, model, and so on) with:
+`.env.example` is generated from `config.SPEC`. Regenerate it after adding a setting:
 
 ```sh
-uv run python -m print_explosion_3d.config
+uv run python -m print_explosion_3d.config > .env.example
 ```
 
 ### One-step install (fresh Mac)
