@@ -11,13 +11,13 @@ Architecture and conventions live in `CLAUDE.md`; this file is just the checklis
 - [x] `scripts/smoke_ui.py` (canvas snapshot), tests for config and lib render
 - [x] App name in menu bar/Dock + app icon (`macos.py`, `scripts/make_icon.py`)
 
-## M1 — OpenSCAD pipeline
-- [ ] `scad/runner.py`: binary resolution, Manifold + binstl, `--summary-file` bbox, timeout,
-      background thread, stderr → structured errors (line numbers, message)
-- [ ] Bed checks: fits 180³, rests on z = 0, not empty
-- [ ] `scad/params.py`: Customizer parser (number, range/step, dropdown incl. `value:Label`, bool,
+## M1 — OpenSCAD pipeline ✅
+- [x] `scad/runner.py`: binary resolution, Manifold + binstl, `--summary-file` bbox, timeout,
+      background thread, stderr → structured errors (line numbers, message); `PE_RENDER_TIMEOUT`
+- [x] Bed checks: fits 180³, rests on z = 0, not empty
+- [x] `scad/params.py`: Customizer parser (number, range/step, dropdown incl. `value:Label`, bool,
       string, sections, `[Hidden]`), in-place value write-back
-- [ ] Fixture tests for each of the above
+- [x] Fixture tests for each of the above
 
 ## M2 — Workspace
 - [ ] `workspace/store.py`: `~/Documents/Print Explosion 3D/<project>/` with `project.json`,

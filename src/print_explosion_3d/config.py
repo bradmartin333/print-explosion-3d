@@ -44,6 +44,7 @@ SPEC: tuple[Setting, ...] = (
     Setting("PE_SHOW_COST", "false", "Show a running cost estimate in the status bar.", "AI"),
     Setting("PE_WORKSPACE_DIR", "", "Projects. Empty = ~/Documents/Print Explosion 3D", "Files"),
     Setting("OPENSCAD_BIN", "", "OpenSCAD binary. Empty = PATH, then /Applications.", "Files"),
+    Setting("PE_RENDER_TIMEOUT", "120", "Seconds before a build is given up (5 to 600).", "Files"),
     Setting("PE_MODEL_COLOR", "#f2a65a", "Viewer model color (#rrggbb).", "Theme"),
     Setting("PE_BG_COLOR", "#f7f3ee", "Viewer background color (#rrggbb).", "Theme"),
     Setting("PE_SHADOW_OPACITY", "0.18", "Ground shadow darkness, 0 to 1.", "Theme"),
@@ -70,6 +71,7 @@ class Settings:
     show_cost: bool
     workspace_dir: Path
     openscad_bin: str | None
+    render_timeout: float
     theme: Theme
 
 
@@ -110,6 +112,7 @@ def load_settings(env: Mapping[str, str | None] | None = None) -> Settings:
             else Path.home() / "Documents" / "Print Explosion 3D"
         ),
         openscad_bin=raw("OPENSCAD_BIN") or None,
+        render_timeout=number("PE_RENDER_TIMEOUT", 5, 600),
         theme=Theme(
             model_color=color("PE_MODEL_COLOR"),
             bg_color=color("PE_BG_COLOR"),

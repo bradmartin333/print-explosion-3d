@@ -13,6 +13,7 @@ def test_defaults_when_env_is_empty():
     assert s.show_cost is False
     assert s.workspace_dir == Path.home() / "Documents" / "Print Explosion 3D"
     assert s.openscad_bin is None
+    assert s.render_timeout == 120
     assert s.theme.model_color == "#f2a65a"
 
 
@@ -46,6 +47,7 @@ def test_bad_values_fall_back_instead_of_crashing():
             "PE_MAX_AUTO_FIXES": "lots",
             "PE_MODEL_COLOR": "orange",
             "PE_SHADOW_OPACITY": "7",
+            "PE_RENDER_TIMEOUT": "forever",
             "PE_MODEL": "   ",
         }
     )
@@ -53,6 +55,7 @@ def test_bad_values_fall_back_instead_of_crashing():
     assert s.max_auto_fixes == 2
     assert s.theme.model_color == "#f2a65a"
     assert s.theme.shadow_opacity == 1.0  # clamped
+    assert s.render_timeout == 120
     assert s.model == "claude-sonnet-5-5"
 
 
