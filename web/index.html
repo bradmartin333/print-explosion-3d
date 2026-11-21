@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Print Explosion 3D</title>
+  <link rel="stylesheet" href="app.css">
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "./vendor/three/three.module.min.js",
+        "three/addons/": "./vendor/three/addons/"
+      }
+    }
+  </script>
+</head>
+<body>
+  <main class="app">
+    <section class="panel chat" aria-label="Designer chat">
+      <header class="panel-head">
+        <h1 class="project-name">New project</h1>
+        <span class="save-status" id="save-status">Not saved yet</span>
+      </header>
+      <div class="messages" id="messages">
+        <div class="msg assistant">Hi! Tell me what you'd like to make — or drop in a photo of something to copy.</div>
+      </div>
+      <form class="composer" id="composer">
+        <textarea id="prompt" rows="3" placeholder="Describe what you want to make…" disabled></textarea>
+        <button type="submit" disabled>Send</button>
+      </form>
+    </section>
+
+    <section class="panel viewer" aria-label="3D preview">
+      <div class="stage" id="stage"></div>
+      <div class="viewer-hint" id="viewer-hint">Click the model to pause spinning</div>
+      <div class="viewer-controls">
+        <label>Zoom <input type="range" id="zoom" min="0.5" max="2.5" step="0.01" value="1"></label>
+        <label>Angle <input type="range" id="angle" min="5" max="85" step="1" value="28"></label>
+      </div>
+    </section>
+
+    <section class="panel params" aria-label="Adjust the design">
+      <header class="panel-head"><h2>Adjust</h2></header>
+      <div class="param-list" id="param-list">
+        <p class="empty">Once there's a design, its sizes and options show up here.</p>
+      </div>
+      <footer class="actions">
+        <button id="generate" disabled>Generate</button>
+        <button id="export" disabled>Save for printing (STL)</button>
+        <button id="bambu" disabled>Open in Bambu Studio</button>
+      </footer>
+    </section>
+  </main>
+  <footer class="statusbar" id="statusbar">Connecting…</footer>
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,44 @@
+[project]
+name = "print-explosion-3d"
+version = "0.1.0"
+description = "Chat-to-3D-print Mac app: describe a thing, tweak it, send it to Bambu Studio."
+readme = "README.md"
+authors = [
+    { name = "bradmartin333", email = "bradmartin333@gmail.com" }
+]
+requires-python = ">=3.13"
+dependencies = [
+    "anthropic>=2.12.0",
+    "python-dotenv>=1.2.4",
+    "pywebview>=6.2.1",
+]
+
+[project.scripts]
+print-explosion = "print_explosion_3d.app:main"
+
+[build-system]
+requires = ["uv_build>=0.12.11,<0.13.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.2.0",
+    "ruff>=0.17.6",
+    "ty>=0.0.107",
+]
+
+[tool.ruff]
+target-version = "py313"
+line-length = 100
+extend-exclude = ["third_party", "web/vendor"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM", "RUF", "PTH"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-m 'not live_api'"
+markers = [
+    "openscad: needs the OpenSCAD binary installed",
+    "live_api: calls the real AI provider and spends credits (opt-in: -m live_api)",
+]

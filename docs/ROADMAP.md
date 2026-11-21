@@ -1,0 +1,59 @@
+# Roadmap
+
+Architecture and conventions live in `CLAUDE.md`; this file is just the checklist.
+
+## M0 — Kickoff ✅
+- [x] uv package (Python 3.13), deps: anthropic, pywebview, python-dotenv; dev: ruff, pytest, ty
+- [x] `config.py` with defaults + `.env` template generator
+- [x] Vendored OpenSCAD skill snapshot (`third_party/openscad-skill`) + runtime lib with A1 mini profile
+- [x] pywebview window spike: 3-panel layout, JS bridge, Three.js viewer (Z-up, shadow, no grid,
+      spin + click-to-pause, zoom/angle sliders)
+- [x] `scripts/smoke_ui.py` (canvas snapshot), tests for config and lib render
+
+## M1 — OpenSCAD pipeline
+- [ ] `scad/runner.py`: binary resolution, Manifold + binstl, `--summary-file` bbox, timeout,
+      background thread, stderr → structured errors (line numbers, message)
+- [ ] Bed checks: fits 180³, rests on z = 0, not empty
+- [ ] `scad/params.py`: Customizer parser (number, range/step, dropdown incl. `value:Label`, bool,
+      string, sections, `[Hidden]`), in-place value write-back
+- [ ] Fixture tests for each of the above
+
+## M2 — Workspace
+- [ ] `workspace/store.py`: `~/Documents/Print Explosion 3D/<project>/` with `project.json`,
+      `model.scad`, `history/` (cap 20), `chat.json` (raw replay + display text), `attachments/`,
+      `model.stl`; top-level `state.json` (last opened)
+- [ ] Autosave + status; delete → macOS Trash (NSFileManager); stale cleanup on startup
+- [ ] Local fuzzy project lookup ("open my bird feeder")
+
+## M3 — AI layer
+- [ ] `ai/base.py` neutral types (user / assistant / note, text, images, opaque raw replay)
+- [ ] `ai/anthropic_provider.py`: beta stream, cache_control, adaptive thinking, effort,
+      `fallbacks: "default"`, friendly errors (no key, low credit balance, offline, refusal)
+- [ ] `ai/fake_provider.py`
+- [ ] `designer/system_prompt.md` curated from the vendored skill + printing rules + response protocol
+- [ ] `designer/protocol.py` (regex extraction) and turn loop: AI design → auto-render →
+      auto-fix (≤ `PE_MAX_AUTO_FIXES`)
+- [ ] Resume = fresh conversation seeded with memory note + current .scad
+- [ ] `usage.jsonl` cost log; tests with FakeProvider and a mocked SDK client
+
+## M4 — UI
+- [ ] Chat: streaming, "Design updated" chip, image attach/paste/drop (downscale to 1568 px JPEG),
+      choice chips, New / Delete project, autosave status, project switcher
+- [ ] Viewer: STL over the bridge (base64) → STLLoader; keep current look
+- [ ] Adjust panel: sections, slider + number, dropdown, checkbox, text; Generate; Save STL (dialog);
+      Open in Bambu Studio
+
+## M5 — Mac integration & deploy
+- [ ] `bambu.py`: `open -a BambuStudio <stl>`; check whether a running instance gets a new project
+      or needs `open -n`
+- [ ] Dock name/icon via pyobjc
+- [ ] `scripts/install.sh` (CLT/git, user-local uv, OpenSCAD ≥ 2025, clone, `.env`, launcher .app)
+- [ ] Launcher: `git pull --ff-only` (offline-tolerant) → `uv sync --frozen` → run; logs to
+      `~/Library/Logs/PrintExplosion3D`
+
+## M6 — Polish / later
+- [ ] Project thumbnails via `viewer.snapshot()`
+- [ ] Optional cost readout (`PE_SHOW_COST`)
+- [ ] Optional BOSL2 library
+- [ ] Inch hints next to mm values
+- [ ] AMS lite multi-color (3MF with multiple objects)
