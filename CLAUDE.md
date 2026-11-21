@@ -18,7 +18,8 @@ uv run pytest                             # tests; live_api tests excluded by de
 uv run pytest -m live_api                 # opt-in tests that SPEND CREDITS
 uv run ruff check --fix && uv run ruff format
 uv run ty check
-uv run python scripts/smoke_ui.py out.png # opens real window, checks bridge + WebGL, saves canvas PNG
+uv run python scripts/smoke_ui.py        # real window: bridge, WebGL, app name; PNG → build/smoke.png
+uv run python scripts/make_icon.py       # regenerate assets/icon.svg + icon.png
 uv run python -m print_explosion_3d.config  # print a commented .env template (all keys + defaults)
 scripts/vendor_three.sh [ver]             # re-vendor Three.js (pinned 0.170.0)
 scripts/update_openscad_skill.sh <ref>    # refresh third_party/openscad-skill snapshot
@@ -30,8 +31,10 @@ at the PNG: screencapture isn't available here (no Screen Recording permission).
 - `src/print_explosion_3d/`
   - `config.py`: `SPEC` is the single source of truth for settings. Each has a default, and bad
     values fall back to it instead of raising.
-  - `app.py`: creates the pywebview window. `api.py` is the JS bridge: thin, and only public
-    methods are exposed.
+  - `app.py`: `launch()` brands the process, creates the pywebview window, starts the loop.
+    `api.py` is the JS bridge: thin, and only public methods are exposed.
+  - `macos.py`: menu bar/Dock name for a bare Python process (CFBundleName + a private
+    LaunchServices rename, all failures swallowed). Icon is `assets/icon.png`.
   - `ai/` (M3): `Provider` protocol, `anthropic_provider.py`, `fake_provider.py`.
   - `designer/` (M3): system prompt, response-protocol parsing, turn loop with auto-fix.
   - `scad/`: `runner.py` and `params.py` (M1). `lib/` is on `OPENSCADPATH` and holds
@@ -101,6 +104,9 @@ The prose must not contain code. The UI hides the code block behind a "Design up
 - Every new setting goes in `config.SPEC` with a working default. Only `ANTHROPIC_API_KEY` is
   required.
 - Everything except the AI chat must work offline.
+- Her app updates from `main` (update check + banner, M5), so `main` must always be shippable.
+  Any change she'll notice gets a plain-English entry at the top of `CHANGELOG.md`; the
+  update banner shows that entry.
 - Note: a permission rule here blocks reading or writing `.env*` files. Use the
   `config.env_template()` output rather than an `.env.example` file.
 

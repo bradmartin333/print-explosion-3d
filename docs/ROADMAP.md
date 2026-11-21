@@ -9,6 +9,7 @@ Architecture and conventions live in `CLAUDE.md`; this file is just the checklis
 - [x] pywebview window spike: 3-panel layout, JS bridge, Three.js viewer (Z-up, shadow, no grid,
       spin + click-to-pause, zoom/angle sliders)
 - [x] `scripts/smoke_ui.py` (canvas snapshot), tests for config and lib render
+- [x] App name in menu bar/Dock + app icon (`macos.py`, `scripts/make_icon.py`)
 
 ## M1 — OpenSCAD pipeline
 - [ ] `scad/runner.py`: binary resolution, Manifold + binstl, `--summary-file` bbox, timeout,
@@ -46,10 +47,19 @@ Architecture and conventions live in `CLAUDE.md`; this file is just the checklis
 ## M5 — Mac integration & deploy
 - [ ] `bambu.py`: `open -a BambuStudio <stl>`; check whether a running instance gets a new project
       or needs `open -n`
-- [ ] Dock name/icon via pyobjc
 - [ ] `scripts/install.sh` (CLT/git, user-local uv, OpenSCAD ≥ 2025, clone, `.env`, launcher .app)
-- [ ] Launcher: `git pull --ff-only` (offline-tolerant) → `uv sync --frozen` → run; logs to
-      `~/Library/Logs/PrintExplosion3D`
+- [ ] Dock launcher: generated `~/Applications/Print Explosion 3D.app` (Info.plist, `.icns` from
+      `assets/icon.png` via `sips` + `iconutil`); its executable only calls `scripts/launch.sh` in the
+      repo so launch logic updates via git. Logs to `~/Library/Logs/PrintExplosion3D`
+- [ ] Verify with `lsappinfo` that the Dock shows one icon when the launcher hands off to Python;
+      if it shows two, fall back to a tiny compiled stub (clang ships with git's CLT)
+- [ ] Optional (ask Brad first): install script pins the launcher to her Dock
+- [ ] Update check on start: background `git fetch origin main` (short timeout, silent offline);
+      offer an update only if `main` is ahead, fast-forwardable, and the working tree is clean
+      (auto-disables on a dev checkout)
+- [ ] Update banner: "A new version is ready. [Update now] [Later]" + top entry of `CHANGELOG.md`
+      read from `origin/main`; Update now → `git pull --ff-only` → `uv sync --frozen` → relaunch;
+      failures show a friendly "try again later"
 
 ## M6 — Polish / later
 - [ ] Project thumbnails via `viewer.snapshot()`

@@ -3,13 +3,17 @@
 from __future__ import annotations
 
 import os
+from collections.abc import Callable
+from typing import Any
 
 import webview
 
 from print_explosion_3d.api import Api
-from print_explosion_3d.config import WEB_DIR, Settings, load_settings
+from print_explosion_3d.config import PACKAGE_DIR, WEB_DIR, Settings, load_settings
+from print_explosion_3d.macos import brand_process
 
 TITLE = "Print Explosion 3D"
+ICON_PATH = PACKAGE_DIR / "assets" / "icon.png"
 
 
 def create_main_window(settings: Settings) -> webview.Window:
@@ -26,10 +30,26 @@ def create_main_window(settings: Settings) -> webview.Window:
     return window
 
 
+def launch(on_start: Callable[..., None] | None = None, *extra: Any) -> None:
+    """Brand the process, open the window, and run the GUI loop until it closes.
+
+    `on_start(window, *extra)` runs on a background thread once the GUI loop starts
+    (used by scripts/smoke_ui.py).
+    """
+    brand_process(TITLE)
+    window = create_main_window(load_settings())
+    webview.start(
+        on_start,
+        (window, *extra) if on_start else None,
+        http_server=True,
+        # PE_DEBUG=1 enables the Web Inspector (right-click → Inspect Element).
+        debug=os.environ.get("PE_DEBUG") == "1",
+        icon=str(ICON_PATH),
+    )
+
+
 def main() -> None:
-    create_main_window(load_settings())
-    # PE_DEBUG=1 enables the Web Inspector (right-click → Inspect Element).
-    webview.start(http_server=True, debug=os.environ.get("PE_DEBUG") == "1")
+    launch()
 
 
 if __name__ == "__main__":

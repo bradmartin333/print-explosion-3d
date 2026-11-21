@@ -6,8 +6,10 @@ import { createViewer } from "./viewer.js";
 
 const DEFAULT_THEME = { model_color: "#f2a65a", bg_color: "#f7f3ee", shadow_opacity: 0.18, spin_speed: 0.35 };
 
+// pywebview creates `window.pywebview.api` before attaching its methods, then fires
+// `pywebviewready` — so check for a real method, not just the object.
 function bridgeReady() {
-  if (window.pywebview?.api) return Promise.resolve(window.pywebview.api);
+  if (typeof window.pywebview?.api?.ping === "function") return Promise.resolve(window.pywebview.api);
   return new Promise((resolve) =>
     window.addEventListener("pywebviewready", () => resolve(window.pywebview.api), { once: true }));
 }
@@ -15,6 +17,7 @@ function bridgeReady() {
 async function boot() {
   const status = document.getElementById("statusbar");
   let theme = DEFAULT_THEME;
+  let bootError = null;
   try {
     const api = await bridgeReady();
     const [pong, serverTheme] = await Promise.all([api.ping(), api.get_theme()]);
@@ -22,6 +25,7 @@ async function boot() {
     status.textContent = `Connected · v${pong.version}`;
   } catch (err) {
     status.textContent = "Couldn't reach the app backend";
+    bootError = String(err?.message ?? err);
     console.error(err);
   }
 
@@ -41,7 +45,7 @@ async function boot() {
   // Hook for scripts/smoke_ui.py (and later, project thumbnails).
   window.__pe = {
     viewer,
-    state: () => ({ status: status.textContent, ...viewer.stats() }),
+    state: () => ({ status: status.textContent, bootError, ...viewer.stats() }),
   };
 }
 

@@ -35,6 +35,10 @@ extend-exclude = ["third_party", "web/vendor"]
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "UP", "B", "SIM", "RUF", "PTH"]
 
+[tool.ruff.lint.per-file-ignores]
+# Embedded SVG markup and a long, fixed pyobjc selector name.
+"scripts/make_icon.py" = ["E501"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-m 'not live_api'"
@@ -42,3 +46,7 @@ markers = [
     "openscad: needs the OpenSCAD binary installed",
     "live_api: calls the real AI provider and spends credits (opt-in: -m live_api)",
 ]
+
+[tool.ty.analysis]
+# pyobjc builds these modules lazily at runtime; ty can't see their members.
+replace-imports-with-any = ["AppKit", "Foundation", "Quartz", "objc"]
