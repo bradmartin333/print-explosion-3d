@@ -51,7 +51,9 @@ MSG_BUILD_FAILED = (
     "Those settings didn't work together, so I put things back the way they were. "
     "Try changing them a little less."
 )
-MSG_NO_OPENSCAD = "I can't build designs on this computer yet. Ask Brad to take a look."
+MSG_NO_OPENSCAD = (
+    "I can't build designs on this computer yet. Ask whoever set this up to take a look."
+)
 _ENVIRONMENT_CODES = {"no_openscad", "old_openscad", "launch_failed", "missing_file"}
 
 EventSink = Callable[[str, Any], None]
@@ -189,7 +191,7 @@ class Api:
         return self._describe(project)
 
     def open_project(self, folder: str | None = None) -> dict[str, Any] | None:
-        """Open `folder`, or the last project she had open if none is given."""
+        """Open `folder`, or the last project that was open if none is given."""
         if self._busy.locked():
             return None
         project = self._workspace.get(str(folder)) if folder else self._workspace.open_last()
@@ -200,7 +202,7 @@ class Api:
         return self._describe(project)
 
     def delete_project(self, folder: str) -> bool:
-        """Move a project to the Trash (she can still get it back from there)."""
+        """Move a project to the Trash (it can still be recovered from there)."""
         if self._busy.locked():
             return False
         if self._current and self._current.folder == folder:
@@ -216,7 +218,7 @@ class Api:
 
     def _set_current(self, project: Project | None) -> None:
         self._current = project
-        self._designer = None  # a new conversation is created lazily on her next message
+        self._designer = None  # a new conversation is created lazily on the next message
         self._built_scad = project.read_scad() if project and project.stl_path.is_file() else ""
 
     def _describe(self, project: Project) -> dict[str, Any]:
@@ -300,7 +302,7 @@ class Api:
 
         try:
             result = designer.send(text, photos, on_text, lambda msg: self._emit("status", msg))
-        except Exception:  # never show her a stack trace
+        except Exception:  # never show the user a stack trace
             result = TurnResult(
                 error="Something went wrong on my end. Please try again.", error_kind="other"
             )
@@ -334,7 +336,7 @@ class Api:
         return base64.b64encode(self._current.stl_path.read_bytes()).decode("ascii")
 
     def set_params(self, values: dict[str, Any]) -> dict[str, Any]:
-        """Write her side-panel edits into the design file (no rebuild yet).
+        """Write the user's side-panel edits into the design file (no rebuild yet).
 
         Saving right away means the AI always sees the current values.
         """

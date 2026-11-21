@@ -1,7 +1,7 @@
 # Changelog
 
-Plain-English notes for Mom. The newest entry goes at the top; the app's update banner shows it.
-Write what she'll notice, not how it was built.
+Plain-English notes for the people who use the app. The newest entry goes at the top; the app's update banner shows it.
+Write what users will notice, not how it was built.
 
 ## 0.5.1
 - The model no longer keeps turning by itself after you right-click it.

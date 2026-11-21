@@ -5,8 +5,8 @@ STL / Bambu Studio. The end user is a non-technical parent with a Bambu Lab A1 m
 production; the README is the product spec.
 
 ## Audience rules
-- UI copy is plain English. No "parameters", "SCAD", "render", "manifold" in anything she sees.
-- She never sees code, stack traces, or OpenSCAD errors. Errors become friendly text, or an automatic
+- UI copy is plain English. No "parameters", "SCAD", "render", "manifold" in anything the user sees.
+- The user never sees code, stack traces, or OpenSCAD errors. Errors become friendly text, or an automatic
   fix round-trip with the AI.
 - No file browser is needed for normal use. Projects are found and resumed by name in the chat.
 
@@ -63,7 +63,7 @@ here (no Screen Recording permission).
   unchanged, including thinking blocks. Editing or deleting past turns breaks the cache and Sonnet
   5.5's preserved thinking. Resuming an old project starts a *new* conversation seeded with the
   project's memory note and its current .scad.
-- App-originated info (she edited a value, a build failed) goes in as a neutral `note` message. The
+- App-originated info (the user edited a value, a build failed) goes in as a neutral `note` message. The
   Anthropic adapter maps it to a mid-conversation `{"role": "system"}` message.
 - Prefer regex and local logic over model calls: code extraction, Customizer parsing, project
   lookup (`difflib`), and obvious commands like "start a new project". Never add a "helper" model
@@ -89,7 +89,7 @@ The prose must not contain code. The UI hides the code block behind a "Design up
   Never put `~` in `use <>`/`include <>`.
 - Designs declare their knobs in Customizer syntax at the top (`name = 10; // [1:100]`,
   `/* [Section] */`, `/* [Hidden] */`), each with a plain-English comment on the line above. Edits
-  she makes in the side panel are written back into the .scad in place, so the AI always sees
+  made in the side panel are written back into the .scad in place, so the AI always sees
   current values.
 
 ## Printing rules (Bambu Lab A1 mini, 0.4 mm nozzle, PLA, textured PEI)
@@ -100,18 +100,18 @@ The prose must not contain code. The UI hides the code block behind a "Design up
   Avoid tall, thin parts with a small footprint.
 - Walls ≥ 1.2 mm, floors ≥ 0.8 mm. Text ≥ 5 mm tall and ≥ 0.6 mm raised or recessed.
 
-## Deploy constraints (her Mac updates via `git pull`)
+## Deploy constraints (the user's Mac updates via `git pull`)
 - The launcher runs `git pull --ff-only` → `uv sync --frozen` → `uv run print-explosion`, so a
-  change must never need manual steps on her machine. Commit `uv.lock`.
+  change must never need manual steps on the user's machine. Commit `uv.lock`.
 - Every new setting goes in `config.SPEC` with a working default. Only `ANTHROPIC_API_KEY` is
   required.
 - Everything except the AI chat must work offline.
-- Her app updates from `main` (update check + banner), so `main` must always be shippable.
-  Any change she'll notice gets a plain-English entry at the top of `CHANGELOG.md`; the
+- The app updates from `main` (update check + banner), so `main` must always be shippable.
+  Any change users will notice gets a plain-English entry at the top of `CHANGELOG.md`; the
   update banner shows that entry.
 - `.env.example` is generated from `config.SPEC`. After changing `SPEC`, regenerate it with
   `uv run python -m print_explosion_3d.config > .env.example`. A permission rule here blocks
-  Claude from reading or writing `.env*` files, so ask Brad to run that command.
+  Claude from reading or writing `.env*` files, so ask the repo owner to run that command.
 
 ## README
 Keep `README.md` up to date as the repo evolves. When a change affects what the app does, how it's

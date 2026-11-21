@@ -35,7 +35,7 @@ DEMO = Path(__file__).parent / "demo"
 WIDE_PX = 1600  # full-width shots are scaled to this; panel crops stay at screen resolution
 TURN_TIMEOUT_S = 120
 
-SEEDED = [  # (name, design file, what she asked, what the designer said, memory note)
+SEEDED = [  # (name, design file, what the user asked, what the designer said, memory note)
     (
         "Herb Marker",
         "herb_marker.scad",
@@ -105,7 +105,7 @@ def seed(root: Path) -> None:
 
 
 def photo_jpeg(tmp: Path, openscad: Path) -> bytes:
-    """The stand-in photo she shares: spice jars on a shelf, drawn by OpenSCAD."""
+    """The stand-in photo the user shares: spice jars on a shelf, drawn by OpenSCAD."""
     png, jpg = tmp / "jars.png", tmp / "jars.jpg"
     subprocess.run(
         [openscad, "-o", png, "--imgsize=900,900", "--camera=0,10,70,62,0,0,560",
@@ -301,7 +301,7 @@ def main() -> int:
     with tempfile.TemporaryDirectory(prefix="pe-shots-") as tmp:
         root = Path(tmp) / "projects"
         os.environ.update(
-            PE_WORKSPACE_DIR=str(root),  # never touch her real projects
+            PE_WORKSPACE_DIR=str(root),  # never touch real projects
             PE_SHOW_COST="false",
             PE_UPDATE_CHECK="false",  # no git fetch, so no update banner in the pictures
             ANTHROPIC_API_KEY="unused-the-designer-is-scripted",  # hides the "needs a key" note

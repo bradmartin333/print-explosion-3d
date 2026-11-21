@@ -24,11 +24,11 @@ class Image:
 class Message:
     """One entry in the conversation.
 
-    - `user`: what she typed, plus any photos.
+    - `user`: what the user typed, plus any photos.
     - `assistant`: a model turn. `raw` is the provider's own content blocks (thinking included),
       replayed byte-for-byte so prompt caching and preserved thinking keep working. `text` is the
       readable part, for logs and for providers that can't use `raw`.
-    - `note`: app-originated info (she edited a value, a build failed). Not her words.
+    - `note`: app-originated info (the user edited a value, a build failed). Not the user's words.
     """
 
     role: Role
@@ -56,7 +56,7 @@ class Reply:
 
 
 class ProviderError(Exception):
-    """A failure with a message that is safe to show her as-is.
+    """A failure with a message that is safe to show the user as-is.
 
     `kind` is a stable tag for code that wants to branch: no_key, bad_key, credits, offline,
     busy, other.

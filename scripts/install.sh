@@ -50,9 +50,9 @@ fi
 cd "$DEST"
 uv sync --frozen
 
-# 5. AI key (the only thing she can't get without Brad)
+# 5. AI key (the only thing the user can't get on their own)
 if [ ! -f .env ] || ! grep -q '^ANTHROPIC_API_KEY=.\+' .env; then
-  say "Paste the AI key Brad gave you (nothing shows as you paste), then press Return:"
+  say "Paste the AI key you were given (nothing shows as you paste), then press Return:"
   read -rs KEY
   echo
   printf 'ANTHROPIC_API_KEY=%s\n' "$KEY" >.env

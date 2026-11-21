@@ -1,4 +1,4 @@
-"""Find a project from what she typed, locally (no AI call): "open my bird feeder"."""
+"""Find a project from what the user typed, locally (no AI call): "open my bird feeder"."""
 
 from __future__ import annotations
 

@@ -21,7 +21,7 @@ MAX_CHOICES = 6
 
 @dataclass(frozen=True, slots=True)
 class ParsedReply:
-    prose: str  # what she reads: no code, no tags
+    prose: str  # what the user reads: no code, no tags
     scad: str | None  # the full file, if the reply holds a design
     title: str | None
     note: str | None

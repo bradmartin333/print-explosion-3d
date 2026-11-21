@@ -35,7 +35,7 @@ function refreshButtons() {
 }
 
 // The backend sends short stage names. The chat bubble and the preview's pill say different
-// things about the same stage, so she never reads the same words twice.
+// things about the same stage, so the user never reads the same words twice.
 const STAGES = {
   "Thinking…": { chat: "Thinking about your idea…", pill: "Designing…" },
   "Fixing a small problem…": { chat: "Fixing a small problem…", pill: "Adjusting…" },
@@ -174,7 +174,7 @@ async function addFiles(files) {
 async function send(text) {
   text = text.trim();
   if (state.busy || (!text && !state.attachments.length)) return;
-  await flushEdits(); // her latest tweaks must be in the file before the AI looks at it
+  await flushEdits(); // the user's latest tweaks must be in the file before the AI looks at it
   const photos = state.attachments;
   const res = await state.api.send_message(text, photos.map(({ name, data }) => ({ name, data })));
   if (res.command) {               // handled locally: "start a new project", "open my bird feeder"
@@ -325,7 +325,7 @@ async function checkForUpdate() {
     $("update-notes").textContent = info.notes.replace(/^\s*[-*]\s+/gm, "• ");
     $("update-banner").hidden = false;
   } catch (err) {
-    console.error(err); // an update check must never bother her
+    console.error(err); // an update check must never bother the user
   }
 }
 
@@ -361,7 +361,7 @@ async function boot() {
   if (!bootError) {
     await showProject(first.project);
     checkForUpdate(); // in the background; the banner appears if something is ready
-    if (!first.has_key) chat.addInfo("To chat with me, this app needs its AI key. Ask Brad to set it up.");
+    if (!first.has_key) chat.addInfo("To chat with me, this app needs its AI key. Ask whoever set this up to add it.");
   }
 
   // Hook for scripts/smoke_ui.py and scripts/screenshots.py.

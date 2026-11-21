@@ -1,7 +1,7 @@
 // 3D preview: Z-up (matches OpenSCAD and the print bed), soft ground shadow, no grid.
 // The model spins slowly on its own; clicking it pauses/resumes, and dragging turns and tilts it
 // (left/right turns, up/down tilts). Zoom and angle also come from plain sliders. The angle goes
-// below the ground so she can look at the underside; the ground is one-sided, so it disappears
+// below the ground so the user can look at the underside; the ground is one-sided, so it disappears
 // from below.
 
 import * as THREE from "three";

@@ -1,4 +1,4 @@
-"""The designer's turn loop: she talks, the AI designs, the app builds, failures auto-fix.
+"""The designer's turn loop: the user talks, the AI designs, the app builds, failures auto-fix.
 
 A `Designer` owns one conversation about one project. History is append-only: each assistant
 turn's raw blocks are replayed unchanged. The one exception is a turn that fails before it
@@ -29,7 +29,7 @@ _ENVIRONMENT_CODES = {"no_openscad", "old_openscad", "launch_failed", "missing_f
 
 MSG_NO_OPENSCAD = (
     "I made a design, but I can't build it because OpenSCAD isn't set up on this computer. "
-    "Ask Brad to take a look."
+    "Ask whoever set this up to take a look."
 )
 MSG_GAVE_UP = (
     "I tried a few times but couldn't get that to work. Could you describe it a little "
@@ -46,7 +46,7 @@ def load_system_prompt() -> str:
 
 @dataclass(slots=True)
 class TurnResult:
-    text: str = ""  # what to show her
+    text: str = ""  # what to show the user
     changed: bool = False  # a new design was built and applied ("Design updated")
     title: str | None = None
     note: str | None = None
@@ -121,7 +121,7 @@ class Designer:
         on_text: TextSink | None = None,
         on_status: Status | None = None,
     ) -> TurnResult:
-        """Handle one thing she said. Blocking; run it off the UI thread."""
+        """Handle one thing the user said. Blocking; run it off the UI thread."""
         status = on_status or (lambda _msg: None)
         mark_messages, mark_display = len(self.messages), len(self.display)
         mark_known = self._known_scad
@@ -131,13 +131,13 @@ class Designer:
             Image(i.media_type, i.data, name) for i, name in zip(images, saved, strict=True)
         )
 
-        # Her side-panel edits live in the file; make sure the AI sees the current one.
+        # Side-panel edits live in the file; make sure the AI sees the current one.
         current = self.project.read_scad()
         if current != self._known_scad and current.strip():
             self.messages.append(
                 Message(
                     "note",
-                    "She changed the settings or the file by hand. The file is now:\n"
+                    "The user changed the settings or the file by hand. The file is now:\n"
                     f"```openscad\n{current}```",
                 )
             )

@@ -46,8 +46,8 @@ easy-to-install, easy-to-update, easy-to-use version, where she can make fun stu
   chamfer on the bottom edge so they print without a brim and pop off the plate.
 - **Always tweakable.** Every design exposes its key measurements as simple controls, so small
   changes never need another chat round.
-- **Friendly errors.** If something goes wrong, the app quietly asks the designer to fix it. She never
-  sees code or error messages.
+- **Friendly errors.** If something goes wrong, the app quietly asks the designer to fix it. You never
+  see code or error messages.
 - **No file browser.** Projects save automatically. Say "open my bird feeder" in the chat to resume,
   or use New / Delete at the top.
 - **Works offline** for everything except the chat itself.

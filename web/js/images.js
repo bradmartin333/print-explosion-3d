@@ -1,4 +1,4 @@
-// Photos she shares: downscale in the page (long side ≤ 1568 px, JPEG) so uploads stay small.
+// Photos the user shares: downscale in the page (long side ≤ 1568 px, JPEG) so uploads stay small.
 
 const MAX_SIDE = 1568;
 

@@ -152,7 +152,7 @@ def main() -> int:
     out = Path(sys.argv[1] if len(sys.argv) > 1 else "build/smoke.png").resolve()
     result: dict = {}
     with tempfile.TemporaryDirectory(prefix="pe-smoke-") as tmp:
-        os.environ["PE_WORKSPACE_DIR"] = tmp  # never touch her real projects
+        os.environ["PE_WORKSPACE_DIR"] = tmp  # never touch real projects
         os.environ["PE_UPDATE_CHECK"] = "false"  # no git fetch, no update banner
         seed_workspace(Path(tmp))
         launch(probe, out, result)

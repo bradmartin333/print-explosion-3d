@@ -144,7 +144,7 @@ def test_message_mapping():
     msgs = [
         Message("note", "seed"),  # start of conversation: labelled user message
         Message("user", "make a box", (img,)),
-        Message("note", "she edited a value"),  # right after a user turn: system message
+        Message("note", "the user edited a value"),  # right after a user turn: system message
         Message("assistant", "ok", raw=raw),
         Message("note", "build failed"),  # after assistant: labelled user message
     ]
@@ -153,7 +153,7 @@ def test_message_mapping():
     assert out[0]["content"].startswith("[Note from the app")
     assert out[1]["content"][0]["type"] == "image"
     assert out[1]["content"][1] == {"type": "text", "text": "make a box"}
-    assert out[2] == {"role": "system", "content": "she edited a value"}
+    assert out[2] == {"role": "system", "content": "the user edited a value"}
     assert out[3] == {"role": "assistant", "content": list(raw)}
     assert out[4]["role"] == "user"
     assert "build failed" in out[4]["content"]

@@ -1,6 +1,6 @@
 #!/bin/bash
 # Launch Print Explosion 3D. Called by the Dock app; lives in the repo so launch logic updates
-# through git. Every step is best-effort except the last: she must always get a window.
+# through git. Every step is best-effort except the last: the user must always get a window.
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 LOG_DIR="$HOME/Library/Logs/PrintExplosion3D"
 mkdir -p "$LOG_DIR"

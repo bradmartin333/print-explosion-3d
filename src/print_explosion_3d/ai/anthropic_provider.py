@@ -13,7 +13,7 @@ from print_explosion_3d.ai.base import Message, ProviderError, Reply, TextSink, 
 FALLBACK_BETA = "server-side-fallback-2026-07-01"
 MAX_OUTPUT_TOKENS = 32_000  # a whole .scad file plus thinking; streaming makes this safe
 
-# What she sees. Never an API error body.
+# What the user sees. Never an API error body.
 MSG_NO_KEY = "I need an Anthropic key to think. Add ANTHROPIC_API_KEY to the .env file and restart."
 MSG_BAD_KEY = "The Anthropic key doesn't seem to work. Check ANTHROPIC_API_KEY in the .env file."
 MSG_CREDITS = "The AI account is out of credit. Add some on the Anthropic website, then try again."
@@ -65,7 +65,7 @@ def to_api_messages(messages: Sequence[Message]) -> list[dict[str, Any]]:
 
 
 def friendly_error(exc: Exception) -> ProviderError:
-    """Turn an SDK exception into something she can read."""
+    """Turn an SDK exception into something the user can read."""
     if isinstance(exc, anthropic.AuthenticationError | anthropic.PermissionDeniedError):
         return ProviderError(MSG_BAD_KEY, "bad_key")
     if isinstance(exc, anthropic.RateLimitError):

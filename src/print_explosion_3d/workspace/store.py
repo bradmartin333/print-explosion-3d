@@ -6,7 +6,7 @@
         model.stl        the last successful build
         history/         earlier versions of model.scad (newest HISTORY_LIMIT kept)
         chat.json        raw model replay + display text, opaque to this module
-        attachments/     photos she shared
+        attachments/     photos the user shared
 
 Every write is atomic (temp file + rename) so a crash or power cut never leaves half a file.
 Nothing here raises for the things that go wrong on a real Mac in normal use; bad or missing

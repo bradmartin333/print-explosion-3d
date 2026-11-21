@@ -1,4 +1,4 @@
-"""Update check and apply. Her app updates from `main` on GitHub via plain git.
+"""Update check and apply. The app updates from `main` on GitHub via plain git.
 
 `check()` is silent on any failure (offline, not a git checkout, dev tree with changes) and only
 reports an update when `origin/main` is ahead, fast-forwardable and the working tree is clean.
