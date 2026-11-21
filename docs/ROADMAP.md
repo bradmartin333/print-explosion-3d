@@ -19,12 +19,12 @@ Architecture and conventions live in `CLAUDE.md`; this file is just the checklis
       string, sections, `[Hidden]`), in-place value write-back
 - [x] Fixture tests for each of the above
 
-## M2 — Workspace
-- [ ] `workspace/store.py`: `~/Documents/Print Explosion 3D/<project>/` with `project.json`,
+## M2 — Workspace ✅
+- [x] `workspace/store.py`: `~/Documents/Print Explosion 3D/<project>/` with `project.json`,
       `model.scad`, `history/` (cap 20), `chat.json` (raw replay + display text), `attachments/`,
       `model.stl`; top-level `state.json` (last opened)
-- [ ] Autosave + status; delete → macOS Trash (NSFileManager); stale cleanup on startup
-- [ ] Local fuzzy project lookup ("open my bird feeder")
+- [x] Autosave + status; delete → macOS Trash (NSFileManager); stale cleanup on startup
+- [x] Local fuzzy project lookup ("open my bird feeder")
 
 ## M3 — AI layer
 - [ ] `ai/base.py` neutral types (user / assistant / note, text, images, opaque raw replay)

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import os
 from collections.abc import Callable
 from typing import Any
@@ -11,16 +12,20 @@ import webview
 from print_explosion_3d.api import Api
 from print_explosion_3d.config import PACKAGE_DIR, WEB_DIR, Settings, load_settings
 from print_explosion_3d.macos import brand_process
+from print_explosion_3d.workspace import Workspace
 
 TITLE = "Print Explosion 3D"
 ICON_PATH = PACKAGE_DIR / "assets" / "icon.png"
 
 
 def create_main_window(settings: Settings) -> webview.Window:
+    workspace = Workspace(settings.workspace_dir)
+    with contextlib.suppress(Exception):  # tidying up must never stop the app opening
+        workspace.clean_stale()
     window = webview.create_window(
         TITLE,
         url=str(WEB_DIR / "index.html"),
-        js_api=Api(settings),
+        js_api=Api(settings, workspace),
         width=1440,
         height=900,
         min_size=(1100, 700),
