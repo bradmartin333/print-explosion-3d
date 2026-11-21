@@ -1,48 +1,88 @@
-# Print Explosion 3D
-Remember Print Explosion? Time to have some fun with AI and 3D prints.
+<p align="center">
+  <img src="src/print_explosion_3d/assets/icon.svg" alt="Print Explosion 3D logo" width="128">
+</p>
 
-# Motivation
-Back in the day, my mom would run Print Explosion Deluxe on her iMac G3 and print custom Avery labels for pretty much everything. It was her jam, and she really misses being able to use it. Also, Avery labels and ink are really expensive.
+<h1 align="center">Print Explosion 3D</h1>
 
-My parents have always been interested in 3D printing, but it would be way too hard to teach them how to, say, unclog a hotend. I bought them a Bambu Lab A1 Mini because I was confident they could happily use it and maintain it. My mom loves it and is using the Bambu web customizer for parametric SCAD files. There are lots of AI -> STL programs out there, but they all require some sort of login or technical know-how. I want to make her an easy-to-install, update, and use Mac app where she can make fun stuff and get creative.
+<p align="center">
+  <strong>Describe it, see it spin, print it.</strong><br>
+  A single-window Mac app that turns a chat (and photos) into a 3D-printable model for a Bambu Lab A1 mini.
+  No CAD knowledge, no accounts, no jargon.
+</p>
 
-# Brainstorm
-I bought $20 of Anthropic API credits while I was messing around with chatbots, and they will expire soon. I want to use those credits along with a simple OpenSCAD-like GUI to make a prompt -> model workflow.
+<!-- SCREENSHOT: hero. Full window mid-design: chat on the left, spinning model in the middle, Adjust panel on the right. -->
+![Print Explosion 3D main window](docs/screenshots/hero.png)
 
-## Chatbot (left panel)
-A jargon-free designer that uses publicly available OpenSCAD skills to generate and iterate on SCAD files. The bot should be able to interpret items from attached images, as well as be flexible with units and design terminology.
+## Why this exists
+Back in the day, my mom would run Print Explosion Deluxe on her iMac G3 and print custom Avery labels
+for pretty much everything. It was her jam, and she really misses it. Avery labels and ink are also
+really expensive.
 
-### Design focus
-- Simple prints with minimal or easy-to-remove supports, with optimized print bed orientation
-- Good first layer structure to allow for prints with no brim/skirt, as well as easy bed release
-- Parametric values for easy tweaking of designs
-- New project button
-- Delete project button
-- Auto-save status info
+My parents have always been curious about 3D printing, but it would be way too hard to teach them to,
+say, unclog a hotend. So I bought them a Bambu Lab A1 mini that they can happily use and maintain.
+Mom loves it, but there is a gap between "I have a printer" and "I can make the thing I'm imagining."
+There are lots of AI-to-STL tools, but they all want a login or some technical know-how. This is the
+easy-to-install, easy-to-update, easy-to-use version, where she can make fun stuff and get creative.
 
-### File management
-- Create a workspace folder and intelligently stash away resource files and memories so that users can conversationally resume or start new projects without using a file browser
-- Clean up stale assets and simplify structure as necessary
+## How it works
+1. **Tell it what you want.** Type it, or drop in a photo ("something like this, but for my
+   spice jars"). Any units and everyday words are fine.
+2. **Watch it appear.** The model shows up in the middle and slowly spins. Click it to pause, and use
+   the sliders to look from a different angle.
+3. **Tweak it.** Sizes and options show up on the right as simple boxes, sliders and dropdowns. Change
+   one, press **Update the model**, and see it again.
+4. **Print it.** **Save for printing** gives you an STL file, or **Open in Bambu Studio** sends it
+   straight to the slicer.
 
-### Considerations
-- Use simple regex or other string processing when possible to prevent burning credits faster than necessary
-- Minimize token usage by clarifying intent before performing longer tasks
+<!-- SCREENSHOT: chat. A short conversation with a photo attached, a "Design updated" chip, and quick-reply buttons. -->
+![Chatting with the designer](docs/screenshots/chat.png)
 
-## Viewer (main panel)
-- When the user clicks a Generate button, the viewer updates and renders the model
-- Errors are captured and fed back into the chat panel as an auto-iteration
-- No gridlines
-- Simple color palette and shadowing that can be configured via a `.env` file
-- Viewer spins slowly by itself, and the user can click the model to pause it
-- Zoom and angle sliders allow users to get a different perspective without needing to learn CAD controls
+<!-- SCREENSHOT: adjust. The Adjust panel with sliders, a dropdown and a checkbox, next to the spinning model. -->
+![Adjusting a design](docs/screenshots/adjust.png)
 
-## Parametric editor (right panel)
-- Simplified OpenSCAD panel with easy-to-use text entries and dropdowns
-- Export STL button
-- Open in Bambu Studio button that opens the file in a new project via CLI or another Apple-style method
+<!-- SCREENSHOT: projects. The project switcher listing a few saved projects, plus the autosave status. -->
+![Switching between projects](docs/screenshots/projects.png)
 
-## Other
-- Open to the last project with stashed chat history
-- Abstract AI calls so it is easy to plug in other providers if someone wants to
-- Research the best framework for the workflow to allow for a single-window application
-- App deployment can rely on `git pull` for now
+<!-- SCREENSHOT: bambu. The finished model open in Bambu Studio. -->
+![Open in Bambu Studio](docs/screenshots/bambu.png)
+
+## What it's built for
+- **Easy prints.** Designs fit the A1 mini's 180 mm bed, sit flat, avoid supports, and have a small
+  chamfer on the bottom edge so they print without a brim and pop off the plate.
+- **Always tweakable.** Every design exposes its key measurements as simple controls, so small
+  changes never need another chat round.
+- **Friendly errors.** If something goes wrong, the app quietly asks the designer to fix it. She never
+  sees code or error messages.
+- **No file browser.** Projects save automatically. Say "open my bird feeder" in the chat to resume,
+  or use New / Delete at the top.
+- **Works offline** for everything except the chat itself.
+- **Stays up to date by itself.** The app updates from this repo, with a short plain-English note
+  about what changed (see `CHANGELOG.md`).
+
+## Under the hood
+- The chat uses the Anthropic API (Claude), behind a small provider interface so another AI can be
+  plugged in. Cheap local logic (regex, fuzzy matching) handles anything that doesn't need a model, to
+  save credits.
+- The designer writes parametric [OpenSCAD](https://openscad.org) files, rendered locally to STL.
+- UI is a pywebview window with a vanilla-JS Three.js viewer. No build step.
+- Projects live in `~/Documents/Print Explosion 3D/`.
+
+Architecture and conventions are in [`CLAUDE.md`](CLAUDE.md). Progress is in
+[`docs/ROADMAP.md`](docs/ROADMAP.md).
+
+## Running it
+Requires macOS, [uv](https://docs.astral.sh/uv/), OpenSCAD 2025 or newer, and an Anthropic API key
+in `.env` as `ANTHROPIC_API_KEY`.
+
+```sh
+uv sync
+uv run print-explosion
+```
+
+Print a commented template of every setting (colors, timeouts, model, and so on) with:
+
+```sh
+uv run python -m print_explosion_3d.config
+```
+
+An installer and Dock launcher are planned (roadmap M5).
