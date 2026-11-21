@@ -3,6 +3,12 @@
 Plain-English notes for Mom. The newest entry goes at the top; the app's update banner shows it.
 Write what she'll notice, not how it was built.
 
+## 0.4.0
+- Your projects now show a little picture of what you made when you pick one from the list at the top.
+- Sizes given in millimetres now also show inches next to them.
+- Buttons, boxes and sliders line up and are the same height.
+- The waiting messages are different in the chat and over the preview, so you don't read the same words twice.
+
 ## 0.3.0
 - The app now tells you when a new version is ready. Press "Update now" and it restarts itself with the new version; "Later" hides the note.
 - There's a "Print Explosion 3D" app for your Applications folder and Dock.

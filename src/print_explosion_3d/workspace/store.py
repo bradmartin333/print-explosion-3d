@@ -84,6 +84,10 @@ class Project:
         return self.path / "model.stl"
 
     @property
+    def thumb_path(self) -> Path:
+        return self.path / "thumbnail.png"
+
+    @property
     def history_dir(self) -> Path:
         return self.path / "history"
 

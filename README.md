@@ -79,6 +79,8 @@ uv sync
 uv run print-explosion
 ```
 
+Set `PE_SHOW_COST=true` to show a running AI cost estimate in the status bar.
+
 Print a commented template of every setting (colors, timeouts, model, and so on) with:
 
 ```sh

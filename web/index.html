@@ -27,7 +27,13 @@
     <section class="panel chat" aria-label="Designer chat" id="chat-panel">
       <header class="panel-head chat-head">
         <div class="head-row">
-          <select id="project-switch" class="project-switch" aria-label="Your projects"></select>
+          <div class="switcher">
+            <button class="ghost project-btn" id="project-switch" type="button" aria-haspopup="listbox" aria-label="Your projects">
+              <img id="project-thumb" class="thumb-img" alt="" hidden>
+              <span id="project-name">New project</span><span class="caret" aria-hidden="true">▾</span>
+            </button>
+            <ul class="project-menu" id="project-menu" role="listbox" hidden></ul>
+          </div>
           <button class="small ghost" id="new-project" type="button">New</button>
           <button class="small ghost danger" id="delete-project" type="button">Delete</button>
         </div>
@@ -75,7 +81,7 @@
       </footer>
     </section>
   </main>
-  <footer class="statusbar" id="statusbar">Connecting…</footer>
+  <footer class="statusbar"><span id="statusbar">Connecting…</span><span id="cost"></span></footer>
   <script type="module" src="js/main.js"></script>
 </body>
 </html>

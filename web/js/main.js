@@ -34,6 +34,15 @@ function refreshButtons() {
   $("delete-project").disabled = state.busy || !state.project;
 }
 
+// The backend sends short stage names. The chat bubble and the preview's pill say different
+// things about the same stage, so she never reads the same words twice.
+const STAGES = {
+  "Thinking…": { chat: "Thinking about your idea…", pill: "Designing…" },
+  "Fixing a small problem…": { chat: "Fixing a small problem…", pill: "Adjusting…" },
+  "Building…": { chat: "Putting the pieces together…", pill: "Shaping the model…" },
+};
+const stage = (msg) => STAGES[msg] ?? { chat: msg, pill: msg };
+
 function setBusy(on, text = "Working…") {
   state.busy = on;
   $("busy").hidden = !on;
@@ -41,6 +50,8 @@ function setBusy(on, text = "Working…") {
   for (const id of ["send", "new-project", "project-switch"]) $(id).disabled = on;
   refreshButtons();
 }
+
+function setCost(text) { $("cost").textContent = text || ""; }
 
 function setStale(on) { state.stale = on; refreshButtons(); }
 function setSaveStatus(text) { $("save-status").textContent = text; }
@@ -70,12 +81,50 @@ function onParamEdit(name, value) {
 const showParams = (sections) => renderParams($("param-list"), sections, onParamEdit);
 
 async function renderSwitcher() {
-  const select = $("project-switch");
   const projects = await state.api.list_projects();
-  select.replaceChildren();
-  if (!state.project) select.append(new Option("New project", ""));
-  for (const p of projects) select.append(new Option(p.name, p.folder));
-  select.value = state.project ? state.project.folder : "";
+  const thumbs = await state.api.project_thumbs();
+  const menu = $("project-menu");
+  menu.replaceChildren();
+  for (const p of projects) {
+    const li = document.createElement("li");
+    li.setAttribute("role", "option");
+    li.setAttribute("aria-selected", String(p.folder === state.project?.folder));
+    const img = document.createElement("img");
+    img.className = "thumb-img";
+    img.alt = "";
+    if (thumbs[p.folder]) img.src = thumbs[p.folder]; else img.style.visibility = "hidden";
+    const nm = document.createElement("span");
+    nm.className = "nm";
+    nm.textContent = p.name;
+    li.append(img, nm);
+    li.addEventListener("click", async () => {
+      menu.hidden = true;
+      if (p.folder === state.project?.folder) return;
+      const opened = await state.api.open_project(p.folder);
+      if (opened) await showProject(opened); else await renderSwitcher();
+    });
+    menu.append(li);
+  }
+  $("project-name").textContent = state.project ? state.project.name : "New project";
+  const mine = state.project && thumbs[state.project.folder];
+  $("project-thumb").hidden = !mine;
+  if (mine) $("project-thumb").src = mine;
+}
+
+// A small picture of the model for the project list (taken after every build).
+function saveThumbnail() {
+  if (!viewer?.hasModel || !state.project) return;
+  try {
+    const src = new Image();
+    src.onload = async () => {
+      const size = 160, scale = Math.min(1, size / Math.max(src.width, src.height));
+      const c = document.createElement("canvas");
+      c.width = Math.round(src.width * scale); c.height = Math.round(src.height * scale);
+      c.getContext("2d").drawImage(src, 0, 0, c.width, c.height);
+      if (await state.api.save_thumbnail(c.toDataURL("image/png"))) renderSwitcher();
+    };
+    src.src = viewer.snapshot();
+  } catch (err) { console.error(err); }
 }
 
 async function showProject(p) {
@@ -142,11 +191,15 @@ async function send(text) {
   $("prompt").value = "";
   if (!state.project) state.project = res.project; // the first message creates the project
   chat.addUser(text, photos.map((p) => p.preview));
-  state.pending = chat.pending("Thinking…");
-  setBusy(true, "Thinking…");
+  state.pending = chat.pending(stage("Thinking…").chat);
+  setBusy(true, stage("Thinking…").pill);
 }
 
-handlers.status = (msg) => { state.pending?.status(msg); $("busy-text").textContent = msg; };
+handlers.status = (msg) => {
+  const s = stage(msg);
+  state.pending?.status(s.chat);
+  $("busy-text").textContent = s.pill;
+};
 handlers.text = (t) => state.pending?.text(t);
 
 handlers.turn_done = async (r) => {
@@ -161,7 +214,9 @@ handlers.turn_done = async (r) => {
     state.stale = false;
     setSaveStatus("All changes saved");
     await refreshModel();
+    saveThumbnail();
   }
+  setCost(r.cost);
   await renderSwitcher();
   setBusy(false);
   $("prompt").focus();
@@ -173,6 +228,7 @@ handlers.built = async (r) => {
   setSaveStatus(r.status);
   state.stale = false; // on a failed build the file went back to match the model on screen
   await refreshModel();
+  if (!r.error) saveThumbnail();
   setBusy(false);
 };
 
@@ -201,11 +257,11 @@ function wireComposer() {
 }
 
 function wireProjects() {
-  $("project-switch").addEventListener("change", async (e) => {
-    if (!e.target.value) return;
-    const p = await state.api.open_project(e.target.value);
-    if (p) await showProject(p); else await renderSwitcher();
+  $("project-switch").addEventListener("click", (e) => {
+    e.stopPropagation();
+    $("project-menu").hidden = !$("project-menu").hidden;
   });
+  document.addEventListener("click", () => { $("project-menu").hidden = true; });
   $("new-project").addEventListener("click", async () => {
     const p = await state.api.new_project();
     if (p) await showProject(p);
@@ -232,7 +288,7 @@ function wireActions() {
   $("generate").addEventListener("click", async () => {
     await flushEdits();
     const res = await state.api.generate();
-    if (res.started) setBusy(true, "Building…");
+    if (res.started) setBusy(true, "Updating the model…");
     else if (res.error) chat.addInfo(res.error);
   });
   $("export").addEventListener("click", async () => {
@@ -281,6 +337,7 @@ async function boot() {
   try {
     state.api = await bridgeReady();
     first = await state.api.boot();
+    setCost(first.cost);
     theme = { ...DEFAULT_THEME, ...first.theme };
     status.textContent = `Connected · v${first.version}`;
   } catch (err) {

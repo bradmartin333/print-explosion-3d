@@ -45,7 +45,14 @@ UI_PROBE = """JSON.stringify({
   messages: document.querySelectorAll('.msg').length,
   chip: !!document.querySelector('.chip'),
   controls: document.querySelectorAll('.param').length,
-  project: document.getElementById('project-switch').value,
+  project: document.getElementById('project-name').textContent,
+  // Widgets that share a row must share a height.
+  rows: Object.fromEntries(['.head-row', '.composer-row', '.param .row', '.actions'].map((sel) => [
+    sel,
+    [...new Set([...document.querySelectorAll(
+      [' > button', ' > input', ' > select'].map((t) => sel + t).join(','))]
+      .map((e) => Math.round(e.getBoundingClientRect().height)))],
+  ])),
 })"""
 
 

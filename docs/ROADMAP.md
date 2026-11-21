@@ -61,9 +61,7 @@ Architecture and conventions live in `CLAUDE.md`; this file is just the checklis
       read from `origin/main`; Update now → `git pull --ff-only` → `uv sync --frozen` → relaunch;
       failures show a friendly "try again later"
 
-## M6 — Polish / later
-- [ ] Project thumbnails via `viewer.snapshot()`
-- [ ] Optional cost readout (`PE_SHOW_COST`)
-- [ ] Optional BOSL2 library
-- [ ] Inch hints next to mm values
-- [ ] AMS lite multi-color (3MF with multiple objects)
+## M6 — Polish / later ✅
+- [x] Project thumbnails via `viewer.snapshot()`
+- [x] Optional cost readout (`PE_SHOW_COST`)
+- [x] Inch hints next to mm values

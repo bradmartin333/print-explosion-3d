@@ -32,6 +32,18 @@ def estimate_cost(usage: Usage) -> float | None:
     ) / 1_000_000
 
 
+def total_cost(path: Path, since: str = "") -> float:
+    """Sum `cost_usd` in the log for entries at or after `since` (ISO time). Never raises."""
+    total = 0.0
+    with contextlib.suppress(OSError):
+        for line in path.read_text(encoding="utf-8").splitlines():
+            with contextlib.suppress(ValueError, TypeError, AttributeError):
+                entry = json.loads(line)
+                if str(entry.get("time", "")) >= since:
+                    total += float(entry.get("cost_usd") or 0)
+    return total
+
+
 def log_usage(path: Path, usage: Usage, *, label: str = "", project: str = "") -> None:
     """Append one line. Logging must never break a turn, so all I/O errors are swallowed."""
     cost = estimate_cost(usage)

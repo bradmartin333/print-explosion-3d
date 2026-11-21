@@ -183,3 +183,33 @@ def test_params_payload_skips_hidden_and_vectors_and_survives_junk():
     payload = params_payload(scad)
     assert [p["name"] for s in payload for p in s["params"]] == ["size"]
     assert params_payload("\x00 not scad {{{") == []
+
+
+def test_thumbnails_round_trip(h):
+    h.api.send_message("a box")
+    h.wait()
+    png = base64.b64encode(b"\x89PNGfake").decode()
+    assert h.api.save_thumbnail("data:image/png;base64," + png) is True
+    folder = h.api.list_projects()[0]["folder"]
+    assert h.api.project_thumbs()[folder].endswith(png)
+    assert h.api.save_thumbnail("not a data url") is False
+    assert h.api.save_thumbnail("data:image/png;base64," + "A" * 600_000) is False
+
+
+def test_cost_readout_is_opt_in(tmp_path):
+    from print_explosion_3d.ai.usage import total_cost
+
+    log = tmp_path / "usage.jsonl"
+    log.write_text(
+        '{"time": "2000-01-01T00:00:00", "cost_usd": 1.0}\n'
+        '{"time": "2999-01-01T00:00:00", "cost_usd": 0.25}\nnot json\n'
+    )
+    assert total_cost(log) == pytest.approx(1.25)
+    assert total_cost(log, "2500-01-01T00:00:00") == pytest.approx(0.25)
+    assert total_cost(tmp_path / "missing.jsonl") == 0.0
+
+    off = Harness(tmp_path / "a")
+    assert off.api.cost_text() is None
+    on = Harness(tmp_path / "b")
+    on.api._settings = load_settings({"PE_WORKSPACE_DIR": str(tmp_path / "b"), "PE_SHOW_COST": "1"})
+    assert on.api.cost_text() == "AI cost this time: about $0.00"

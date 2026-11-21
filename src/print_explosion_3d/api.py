@@ -16,6 +16,7 @@ import re
 import shutil
 import tempfile
 import threading
+import time
 from collections.abc import Callable
 from dataclasses import asdict
 from importlib.metadata import version
@@ -24,6 +25,7 @@ from typing import Any
 
 from print_explosion_3d import bambu, updater
 from print_explosion_3d.ai import Image, Provider, ProviderError, make_provider
+from print_explosion_3d.ai.usage import total_cost
 from print_explosion_3d.config import Settings
 from print_explosion_3d.designer import Designer, TurnResult, visible_prose
 from print_explosion_3d.scad.params import ParamError, apply_values, parse_params, visible_sections
@@ -32,6 +34,7 @@ from print_explosion_3d.workspace import Project, Workspace, find_projects
 
 DEFAULT_NAME = "New project"
 MAX_IMAGES = 4
+MAX_THUMB_BYTES = 400_000
 MAX_IMAGE_BYTES = 6_000_000  # after the page has downscaled it, so this is a safety net
 
 _NEW_PROJECT = re.compile(
@@ -73,6 +76,7 @@ class Api:
         self._emit: EventSink = lambda _name, _data: None
         self._window: Any = None
         self._busy = threading.Lock()
+        self._started = time.strftime("%Y-%m-%dT%H:%M:%S")  # cost readout counts from here
 
     # --- wiring (Python side only) ------------------------------------------------------------
 
@@ -107,7 +111,49 @@ class Api:
             "theme": asdict(self._settings.theme),
             "project": self.open_project(),
             "has_key": bool(self._settings.anthropic_api_key),
+            "cost": self.cost_text(),
         }
+
+    def cost_text(self) -> str | None:
+        """Status-bar text when PE_SHOW_COST is on; otherwise None."""
+        if not self._settings.show_cost:
+            return None
+        spent = total_cost(self._settings.workspace_dir / "usage.jsonl", self._started)
+        return f"AI cost this time: about ${spent:.2f}"
+
+    # --- thumbnails -------------------------------------------------------------------------
+
+    def save_thumbnail(self, data_url: str) -> bool:
+        """Keep a small picture of the current model for the project list."""
+        project = self._current
+        prefix = "data:image/png;base64,"
+        if project is None or not str(data_url).startswith(prefix):
+            return False
+        try:
+            data = base64.b64decode(str(data_url)[len(prefix) :])
+        except (ValueError, TypeError):
+            return False
+        if not data or len(data) > MAX_THUMB_BYTES:
+            return False
+        try:
+            project.thumb_path.write_bytes(data)
+        except OSError:
+            return False
+        return True
+
+    def project_thumbs(self) -> dict[str, str]:
+        """Folder -> data URL, for projects that have a picture."""
+        out: dict[str, str] = {}
+        for info in self._workspace.list_projects():
+            project = self._workspace.get(info.folder)
+            if project is None:
+                continue
+            try:
+                raw = project.thumb_path.read_bytes()
+            except OSError:
+                continue
+            out[info.folder] = "data:image/png;base64," + base64.b64encode(raw).decode()
+        return out
 
     # --- updates ----------------------------------------------------------------------------
 
@@ -273,6 +319,7 @@ class Api:
                 "project": asdict(project.info()),
                 "params": params_payload(project.read_scad()) if result.changed else None,
                 "warnings": [w.code for w in result.render.warnings] if result.render else [],
+                "cost": self.cost_text(),
             },
         )
 
