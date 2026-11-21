@@ -85,4 +85,12 @@ Print a commented template of every setting (colors, timeouts, model, and so on)
 uv run python -m print_explosion_3d.config
 ```
 
-An installer and Dock launcher are planned (roadmap M5).
+### One-step install (fresh Mac)
+```sh
+bash <(curl -fsSL https://raw.githubusercontent.com/bradmartin333/print-explosion-3d/main/scripts/install.sh)
+```
+It checks for git, uv and OpenSCAD 2025+, downloads the app to `~/PrintExplosion3D`, asks for the
+AI key, and creates `~/Applications/Print Explosion 3D.app` (drag it to the Dock). That app only runs
+`scripts/launch.sh`, which pulls the latest `main` and starts the app, so updates arrive by themselves.
+Launch logs are in `~/Library/Logs/PrintExplosion3D`. The app also checks for updates on start and
+shows an "Update now" banner when `main` is ahead (it stays quiet on a development checkout).

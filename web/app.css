@@ -108,7 +108,7 @@ button.danger { color: #9a2d1f; }
 button.small.danger:not(.ghost) { background: #f6d9d4; }
 button.icon { padding: 6px 9px; font-size: 16px; }
 .confirm { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 10px 16px; background: #fbeeea; border-bottom: 1px solid var(--line); font-size: 14px; }
-.confirm[hidden], .attachments[hidden], .drop-hint[hidden], .busy[hidden], .stale[hidden] { display: none; }
+.confirm[hidden], .update-banner[hidden], .attachments[hidden], .drop-hint[hidden], .busy[hidden], .stale[hidden] { display: none; }
 .msg { white-space: pre-wrap; overflow-wrap: anywhere; }
 .msg.info { align-self: stretch; max-width: 100%; background: #fbeeea; color: #7a2a1d; }
 .msg.pending { color: var(--muted); }
@@ -172,3 +172,7 @@ button.icon { padding: 6px 9px; font-size: 16px; }
 .param.check label.name { display: flex; align-items: center; gap: 8px; }
 .param input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--accent); }
 .stale { margin: 0; font-size: 13px; color: var(--muted); }
+
+.update-banner { display: flex; align-items: center; gap: 10px; padding: 10px 16px; background: #eaf3e6; border-bottom: 1px solid var(--line); font-size: 14px; }
+.update-text { flex: 1; min-width: 0; }
+.update-text span { display: block; color: var(--muted); white-space: pre-line; }

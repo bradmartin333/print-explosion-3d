@@ -246,6 +246,33 @@ function wireActions() {
   });
 }
 
+function wireUpdate() {
+  const banner = $("update-banner");
+  $("update-later").addEventListener("click", () => { banner.hidden = true; });
+  $("update-now").addEventListener("click", async () => {
+    $("update-now").disabled = true;
+    $("update-title").textContent = "Updating… the app will restart in a moment.";
+    $("update-notes").textContent = "";
+    const res = await state.api.apply_update();
+    if (!res.ok) {
+      $("update-title").textContent = res.error;
+      $("update-now").disabled = false;
+    }
+  });
+}
+
+async function checkForUpdate() {
+  try {
+    const info = await state.api.check_update();
+    if (!info.available) return;
+    // Notes are plain text from CHANGELOG.md: bullets become lines.
+    $("update-notes").textContent = info.notes.replace(/^\s*[-*]\s+/gm, "• ");
+    $("update-banner").hidden = false;
+  } catch (err) {
+    console.error(err); // an update check must never bother her
+  }
+}
+
 async function boot() {
   const status = $("statusbar");
   let theme = DEFAULT_THEME;
@@ -272,9 +299,11 @@ async function boot() {
   wireComposer();
   wireProjects();
   wireActions();
+  wireUpdate();
 
   if (!bootError) {
     await showProject(first.project);
+    checkForUpdate(); // in the background; the banner appears if something is ready
     if (!first.has_key) chat.addInfo("To chat with me, this app needs its AI key. Ask Brad to set it up.");
   }
 

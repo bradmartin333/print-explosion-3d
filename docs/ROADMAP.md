@@ -44,20 +44,20 @@ Architecture and conventions live in `CLAUDE.md`; this file is just the checklis
 - [x] Adjust panel: sections, slider + number, dropdown, checkbox, text; Update the model; Save STL (dialog);
       Open in Bambu Studio
 
-## M5 — Mac integration & deploy
-- [ ] `bambu.py`: `open -a BambuStudio <stl>`; check whether a running instance gets a new project
+## M5 — Mac integration & deploy (in progress)
+- [ ] (needs a manual check with Bambu Studio running) `bambu.py`: `open -a BambuStudio <stl>`; check whether a running instance gets a new project
       or needs `open -n`
-- [ ] `scripts/install.sh` (CLT/git, user-local uv, OpenSCAD ≥ 2025, clone, `.env`, launcher .app)
-- [ ] Dock launcher: generated `~/Applications/Print Explosion 3D.app` (Info.plist, `.icns` from
+- [x] `scripts/install.sh` (CLT/git, user-local uv, OpenSCAD ≥ 2025, clone, `.env`, launcher .app)
+- [x] Dock launcher: generated `~/Applications/Print Explosion 3D.app` (Info.plist, `.icns` from
       `assets/icon.png` via `sips` + `iconutil`); its executable only calls `scripts/launch.sh` in the
       repo so launch logic updates via git. Logs to `~/Library/Logs/PrintExplosion3D`
 - [ ] Verify with `lsappinfo` that the Dock shows one icon when the launcher hands off to Python;
       if it shows two, fall back to a tiny compiled stub (clang ships with git's CLT)
 - [ ] Optional (ask Brad first): install script pins the launcher to her Dock
-- [ ] Update check on start: background `git fetch origin main` (short timeout, silent offline);
+- [x] Update check on start: background `git fetch origin main` (short timeout, silent offline);
       offer an update only if `main` is ahead, fast-forwardable, and the working tree is clean
       (auto-disables on a dev checkout)
-- [ ] Update banner: "A new version is ready. [Update now] [Later]" + top entry of `CHANGELOG.md`
+- [x] Update banner: "A new version is ready. [Update now] [Later]" + top entry of `CHANGELOG.md`
       read from `origin/main`; Update now → `git pull --ff-only` → `uv sync --frozen` → relaunch;
       failures show a friendly "try again later"
 

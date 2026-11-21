@@ -22,7 +22,7 @@ from importlib.metadata import version
 from pathlib import Path
 from typing import Any
 
-from print_explosion_3d import bambu
+from print_explosion_3d import bambu, updater
 from print_explosion_3d.ai import Image, Provider, ProviderError, make_provider
 from print_explosion_3d.config import Settings
 from print_explosion_3d.designer import Designer, TurnResult, visible_prose
@@ -108,6 +108,21 @@ class Api:
             "project": self.open_project(),
             "has_key": bool(self._settings.anthropic_api_key),
         }
+
+    # --- updates ----------------------------------------------------------------------------
+
+    def check_update(self) -> dict[str, Any]:
+        """Silent check; the page shows the banner only if `available`."""
+        info = updater.check()
+        return {"available": info.available, "notes": info.notes}
+
+    def apply_update(self) -> dict[str, Any]:
+        if self._busy.locked():
+            return {"ok": False, "error": MSG_BUSY}
+        if not updater.apply():
+            return {"ok": False, "error": updater.MSG_UPDATE_FAILED}
+        threading.Timer(0.5, updater.relaunch).start()  # let the page show "Restarting…" first
+        return {"ok": True}
 
     # --- projects ---------------------------------------------------------------------------
 
