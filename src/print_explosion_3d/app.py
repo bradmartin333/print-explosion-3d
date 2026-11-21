@@ -22,16 +22,18 @@ def create_main_window(settings: Settings) -> webview.Window:
     workspace = Workspace(settings.workspace_dir)
     with contextlib.suppress(Exception):  # tidying up must never stop the app opening
         workspace.clean_stale()
+    api = Api(settings, workspace)
     window = webview.create_window(
         TITLE,
         url=str(WEB_DIR / "index.html"),
-        js_api=Api(settings, workspace),
+        js_api=api,
         width=1440,
         height=900,
         min_size=(1100, 700),
         background_color=settings.theme.bg_color,
     )
     assert window is not None
+    api._attach(window)
     return window
 
 

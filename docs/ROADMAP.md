@@ -37,11 +37,11 @@ Architecture and conventions live in `CLAUDE.md`; this file is just the checklis
 - [x] Resume = fresh conversation seeded with memory note + current .scad
 - [x] `usage.jsonl` cost log; tests with FakeProvider and a mocked SDK client
 
-## M4 — UI
-- [ ] Chat: streaming, "Design updated" chip, image attach/paste/drop (downscale to 1568 px JPEG),
+## M4 — UI ✅
+- [x] Chat: streaming, "Design updated" chip, image attach/paste/drop (downscale to 1568 px JPEG),
       choice chips, New / Delete project, autosave status, project switcher
-- [ ] Viewer: STL over the bridge (base64) → STLLoader; keep current look
-- [ ] Adjust panel: sections, slider + number, dropdown, checkbox, text; Generate; Save STL (dialog);
+- [x] Viewer: STL over the bridge (base64) → STLLoader; keep current look
+- [x] Adjust panel: sections, slider + number, dropdown, checkbox, text; Update the model; Save STL (dialog);
       Open in Bambu Studio
 
 ## M5 — Mac integration & deploy

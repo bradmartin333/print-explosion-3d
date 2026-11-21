@@ -168,6 +168,7 @@ def test_api_flow(tmp_path):
     assert api.open_project() is None
     assert api.save_design("a = 1;")["saved"] is False
     made = api.new_project("Bird Feeder")
+    assert made is not None
     assert api.save_design("a = 1;") == {"saved": True, "status": "All changes saved"}
     reopened = api.open_project()
     assert reopened and reopened["scad"] == "a = 1;"

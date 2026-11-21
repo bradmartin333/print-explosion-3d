@@ -16,23 +16,37 @@
 </head>
 <body>
   <main class="app">
-    <section class="panel chat" aria-label="Designer chat">
-      <header class="panel-head">
-        <h1 class="project-name">New project</h1>
+    <section class="panel chat" aria-label="Designer chat" id="chat-panel">
+      <header class="panel-head chat-head">
+        <div class="head-row">
+          <select id="project-switch" class="project-switch" aria-label="Your projects"></select>
+          <button class="small ghost" id="new-project" type="button">New</button>
+          <button class="small ghost danger" id="delete-project" type="button">Delete</button>
+        </div>
         <span class="save-status" id="save-status">Not saved yet</span>
       </header>
-      <div class="messages" id="messages">
-        <!-- TODO(M4): real greeting once the designer is wired up -->
-        <div class="msg assistant">Hi! I'm still being built — chatting arrives in the next update.</div>
+      <div class="confirm" id="confirm" hidden>
+        <span id="confirm-text"></span>
+        <button class="small danger" id="confirm-yes" type="button">Yes, delete it</button>
+        <button class="small ghost" id="confirm-no" type="button">Keep it</button>
       </div>
+      <div class="messages" id="messages" aria-live="polite"></div>
+      <div class="drop-hint" id="drop-hint" hidden>Drop a photo to share it</div>
       <form class="composer" id="composer">
-        <textarea id="prompt" rows="3" placeholder="Chat is coming in the next update" disabled></textarea>
-        <button type="submit" disabled>Send</button>
+        <div class="attachments" id="attachments" hidden></div>
+        <div class="composer-row">
+          <button class="icon ghost" id="attach" type="button" title="Add a photo" aria-label="Add a photo">📷</button>
+          <textarea id="prompt" rows="2" placeholder="Tell me what you'd like to make…"></textarea>
+          <button type="submit" id="send">Send</button>
+        </div>
+        <input type="file" id="file-input" accept="image/*" multiple hidden>
       </form>
     </section>
 
     <section class="panel viewer" aria-label="3D preview">
       <div class="stage" id="stage"></div>
+      <div class="viewer-empty" id="viewer-empty">Your design will show up here.</div>
+      <div class="busy" id="busy" hidden><span class="spinner"></span><span id="busy-text">Working…</span></div>
       <div class="viewer-hint" id="viewer-hint">Click the model to pause spinning</div>
       <div class="viewer-controls">
         <label>Zoom <input type="range" id="zoom" min="0.5" max="2.5" step="0.01" value="1"></label>
@@ -46,7 +60,8 @@
         <p class="empty">Once there's a design, its sizes and options show up here.</p>
       </div>
       <footer class="actions">
-        <button id="generate" disabled>Generate</button>
+        <p class="stale" id="stale" hidden>You changed something. Press Update to see it.</p>
+        <button id="generate" disabled>Update the model</button>
         <button id="export" disabled>Save for printing (STL)</button>
         <button id="bambu" disabled>Open in Bambu Studio</button>
       </footer>

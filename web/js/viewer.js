@@ -3,6 +3,7 @@
 // plain sliders so nobody has to learn CAD mouse controls.
 
 import * as THREE from "three";
+import { STLLoader } from "three/addons/loaders/STLLoader.js";
 
 export function createViewer(container, theme) {
   const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -66,6 +67,21 @@ export function createViewer(container, theme) {
     placeCamera();
   }
 
+  const stlLoader = new STLLoader();
+
+  // Show a model sent over the bridge as base64 binary STL (as OpenSCAD writes it).
+  function loadStl(base64) {
+    const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
+    setGeometry(stlLoader.parse(bytes.buffer));
+  }
+
+  function clear() {
+    if (!mesh) return;
+    spinner.remove(mesh);
+    mesh.geometry.dispose();
+    mesh = null;
+  }
+
   function placeCamera() {
     // Fit the bounding sphere (the spin sweeps it) inside the narrower of the two FOVs.
     const vFov = THREE.MathUtils.degToRad(camera.fov);
@@ -103,6 +119,9 @@ export function createViewer(container, theme) {
 
   return {
     setGeometry,
+    loadStl,
+    clear,
+    get hasModel() { return mesh !== null; },
     setZoom(z) { view.zoom = z; placeCamera(); },
     setElevation(deg) { view.elevationDeg = deg; placeCamera(); },
     setSpinning(on) { view.spinning = on; },
