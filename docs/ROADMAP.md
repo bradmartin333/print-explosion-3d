@@ -26,16 +26,16 @@ Architecture and conventions live in `CLAUDE.md`; this file is just the checklis
 - [x] Autosave + status; delete → macOS Trash (NSFileManager); stale cleanup on startup
 - [x] Local fuzzy project lookup ("open my bird feeder")
 
-## M3 — AI layer
-- [ ] `ai/base.py` neutral types (user / assistant / note, text, images, opaque raw replay)
-- [ ] `ai/anthropic_provider.py`: beta stream, cache_control, adaptive thinking, effort,
+## M3 — AI layer ✅
+- [x] `ai/base.py` neutral types (user / assistant / note, text, images, opaque raw replay)
+- [x] `ai/anthropic_provider.py`: beta stream, cache_control, adaptive thinking, effort,
       `fallbacks: "default"`, friendly errors (no key, low credit balance, offline, refusal)
-- [ ] `ai/fake_provider.py`
-- [ ] `designer/system_prompt.md` curated from the vendored skill + printing rules + response protocol
-- [ ] `designer/protocol.py` (regex extraction) and turn loop: AI design → auto-render →
+- [x] `ai/fake_provider.py`
+- [x] `designer/system_prompt.md` curated from the vendored skill + printing rules + response protocol
+- [x] `designer/protocol.py` (regex extraction) and turn loop: AI design → auto-render →
       auto-fix (≤ `PE_MAX_AUTO_FIXES`)
-- [ ] Resume = fresh conversation seeded with memory note + current .scad
-- [ ] `usage.jsonl` cost log; tests with FakeProvider and a mocked SDK client
+- [x] Resume = fresh conversation seeded with memory note + current .scad
+- [x] `usage.jsonl` cost log; tests with FakeProvider and a mocked SDK client
 
 ## M4 — UI
 - [ ] Chat: streaming, "Design updated" chip, image attach/paste/drop (downscale to 1568 px JPEG),
