@@ -187,3 +187,65 @@ def test_real_trash_moves_folder(tmp_path):
     (target / "f").write_text("x")
     move_to_trash(target)
     assert not target.exists()
+
+
+# --- v0.6: undo, copy, share ----------------------------------------------------------------
+
+
+def test_undo_walks_back_through_history(tmp_path):
+    import shutil
+
+    ws = Workspace(tmp_path, trash=shutil.rmtree)
+    p = ws.create("Cup")
+    assert not p.can_undo() and p.undo() is False
+    for text in ("a", "b", "c"):
+        p.save_scad(text)
+    assert p.can_undo()
+    assert p.undo() and p.read_scad() == "b"
+    assert p.undo() and p.read_scad() == "a"
+    assert not p.undo() and p.read_scad() == "a"
+
+
+def test_duplicate_copies_files_but_not_history(tmp_path):
+    import shutil
+
+    ws = Workspace(tmp_path, trash=shutil.rmtree)
+    p = ws.create("Cup")
+    p.save_scad("one")
+    p.save_scad("two")
+    p.save_stl(b"stl")
+    p.update_meta(note="A cup.")
+    p.add_attachment("photo.jpg", b"jpg")
+    copy = ws.duplicate(p.folder)
+    assert copy and copy.name == "Cup copy" and copy.note == "A cup."
+    assert copy.read_scad() == "two" and copy.stl_path.read_bytes() == b"stl"
+    assert (copy.attachments_dir / "photo.jpg").exists() and copy.history() == []
+    assert ws.duplicate("nope") is None
+
+
+def test_pack_and_unpack_round_trip_and_refuse_junk(tmp_path):
+    import shutil
+    import zipfile
+
+    ws = Workspace(tmp_path / "w", trash=shutil.rmtree)
+    p = ws.create("Cup")
+    p.save_scad("cube(1);")
+    p.update_meta(note="A cup.")
+    target = tmp_path / "Cup.pe3d"
+    assert ws.pack(p.folder, target)
+    got = ws.unpack(target)
+    assert got and got.name == "Cup" and got.folder != p.folder
+    assert got.read_scad() == "cube(1);" and got.note == "A cup."
+
+    evil = tmp_path / "evil.pe3d"
+    with zipfile.ZipFile(evil, "w") as z:
+        z.writestr("model.scad", "cube(2);")
+        z.writestr("../../escape.txt", "x")
+        z.writestr("attachments/../../escape2.txt", "x")
+    ok = ws.unpack(evil)
+    assert ok and not (tmp_path / "escape.txt").exists() and not (tmp_path / "escape2.txt").exists()
+    (tmp_path / "bad.pe3d").write_bytes(b"nope")
+    assert ws.unpack(tmp_path / "bad.pe3d") is None
+    with zipfile.ZipFile(tmp_path / "other.pe3d", "w") as z:
+        z.writestr("readme.txt", "hi")
+    assert ws.unpack(tmp_path / "other.pe3d") is None

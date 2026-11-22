@@ -49,8 +49,28 @@ export function createViewer(container, theme, { onElevation } = {}) {
   });
   let mesh = null;
 
+  // The printer's plate, drawn flat under the model (it doesn't turn with it). Hidden unless asked for.
+  const PLATE_MM = 180;
+  const plate = new THREE.Group();
+  const plateTop = new THREE.Mesh(
+    new THREE.PlaneGeometry(PLATE_MM, PLATE_MM),
+    new THREE.MeshBasicMaterial({ color: 0xded6cc, transparent: true, opacity: 0.55 }),
+  );
+  const outline = new THREE.LineLoop(
+    new THREE.BufferGeometry().setFromPoints([
+      new THREE.Vector3(-90, -90, 0), new THREE.Vector3(90, -90, 0),
+      new THREE.Vector3(90, 90, 0), new THREE.Vector3(-90, 90, 0),
+    ]),
+    new THREE.LineBasicMaterial({ color: 0x9a8f84 }),
+  );
+  plate.add(plateTop, outline);
+  plate.position.z = -0.05;
+  plate.visible = false;
+  scene.add(plate);
+
   const view = {
     zoom: 1, elevationDeg: DEFAULT_ELEVATION, spinning: true, radius: 50, center: new THREE.Vector3(),
+    showPlate: false,
   };
 
   let loads = 0; // models shown so far, so scripts can tell a new model from the last one
@@ -101,7 +121,9 @@ export function createViewer(container, theme, { onElevation } = {}) {
     // Fit the bounding sphere (the spin sweeps it) inside the narrower of the two FOVs.
     const vFov = THREE.MathUtils.degToRad(camera.fov);
     const hFov = 2 * Math.atan(Math.tan(vFov / 2) * camera.aspect);
-    const fitDistance = view.radius / Math.sin(Math.min(vFov, hFov) / 2);
+    // With the plate showing, fit the whole plate, so the model's size reads against it.
+    const radius = view.showPlate ? Math.max(view.radius, PLATE_MM * 0.6) : view.radius;
+    const fitDistance = radius / Math.sin(Math.min(vFov, hFov) / 2);
     const distance = fitDistance * 1.5 / view.zoom;
     const elev = THREE.MathUtils.degToRad(view.elevationDeg);
     camera.position.set(0, -distance * Math.cos(elev), view.center.z + distance * Math.sin(elev));
@@ -174,6 +196,7 @@ export function createViewer(container, theme, { onElevation } = {}) {
     get hasModel() { return mesh !== null; },
     setZoom(z) { view.zoom = z; placeCamera(); },
     setElevation,
+    setPlate(on) { view.showPlate = on; plate.visible = on; placeCamera(); },
     get elevation() { return view.elevationDeg; },
     setSpinning(on) { view.spinning = on; },
     setTurn(deg) { spinner.rotation.z = THREE.MathUtils.degToRad(deg); },

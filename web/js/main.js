@@ -17,7 +17,10 @@ function bridgeReady() {
     window.addEventListener("pywebviewready", () => resolve(window.pywebview.api), { once: true }));
 }
 
-const state = { api: null, project: null, busy: false, stale: false, attachments: [], pending: null, edits: {} };
+const state = {
+  api: null, project: null, busy: false, stale: false, attachments: [], pending: null, edits: {},
+  canUndo: false, prefs: { text_size: "normal", high_contrast: false, still: false, show_plate: false },
+};
 let viewer, chat, editTimer;
 const handlers = {};
 window.peEvent = (name, data) => handlers[name]?.(data); // Python → page
@@ -32,6 +35,8 @@ function refreshButtons() {
   $("stale").hidden = !state.stale;
   $("viewer-empty").hidden = hasModel;
   $("delete-project").disabled = state.busy || !state.project;
+  $("undo").disabled = state.busy || !state.canUndo;
+  $("copies").disabled = state.busy || !hasModel;
 }
 
 // The backend sends short stage names. The chat bubble and the preview's pill say different
@@ -47,7 +52,8 @@ function setBusy(on, text = "Working…") {
   state.busy = on;
   $("busy").hidden = !on;
   $("busy-text").textContent = text;
-  for (const id of ["send", "new-project", "project-switch"]) $(id).disabled = on;
+  $("viewer").classList.toggle("is-busy", on);
+  for (const id of ["send", "new-project", "project-switch", "more"]) $(id).disabled = on;
   refreshButtons();
 }
 
@@ -60,7 +66,30 @@ async function refreshModel() {
   const stl = await state.api.get_stl();
   if (stl) viewer.loadStl(stl); else viewer.clear();
   refreshButtons();
+  await refreshInfo();
 }
+
+// The card on the preview: size, rough time and plastic, and any "heads up" about printing.
+async function refreshInfo() {
+  const info = viewer.hasModel ? await state.api.model_info() : null;
+  $("model-info").hidden = !info;
+  $("copies").value = info ? info.copies : 1;
+  $("copies").max = info ? info.max_copies : 100;
+  $("copies-note").hidden = true;
+  if (!info) return;
+  const badge = $("info-badge");
+  badge.textContent = info.ready ? "Ready to print" : "Heads up";
+  badge.classList.toggle("warn", !info.ready);
+  $("info-size").textContent = `Size: ${info.size}`;
+  $("info-time").textContent = `Takes ${info.time}, ${info.plastic}`;
+  $("info-notes").replaceChildren(...info.notes.map((n) => {
+    const li = document.createElement("li");
+    li.textContent = n;
+    return li;
+  }));
+}
+
+function setCanUndo(on) { state.canUndo = !!on; refreshButtons(); }
 
 async function flushEdits() {
   clearTimeout(editTimer);
@@ -68,7 +97,7 @@ async function flushEdits() {
   if (!Object.keys(edits).length) return;
   state.edits = {};
   const res = await state.api.set_params(edits);
-  if (res.saved) { setSaveStatus(res.status); setStale(true); }
+  if (res.saved) { setSaveStatus(res.status); setStale(true); setCanUndo(res.can_undo); }
   else if (res.error) chat.addInfo(res.error);
 }
 
@@ -89,6 +118,7 @@ async function renderSwitcher() {
     const li = document.createElement("li");
     li.setAttribute("role", "option");
     li.setAttribute("aria-selected", String(p.folder === state.project?.folder));
+    li.tabIndex = 0;
     const img = document.createElement("img");
     img.className = "thumb-img";
     img.alt = "";
@@ -97,6 +127,7 @@ async function renderSwitcher() {
     nm.className = "nm";
     nm.textContent = p.name;
     li.append(img, nm);
+    li.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); li.click(); } });
     li.addEventListener("click", async () => {
       menu.hidden = true;
       if (p.folder === state.project?.folder) return;
@@ -131,6 +162,7 @@ async function showProject(p) {
   state.project = p;
   state.edits = {};
   state.stale = false;
+  state.canUndo = !!p?.can_undo;
   chat.show(p?.chat?.display);
   showParams(p?.params);
   setSaveStatus(p ? "All changes saved" : "Not saved yet");
@@ -174,28 +206,69 @@ async function addFiles(files) {
 async function send(text) {
   text = text.trim();
   if (state.busy || (!text && !state.attachments.length)) return;
-  await flushEdits(); // the user's latest tweaks must be in the file before the AI looks at it
   const photos = state.attachments;
-  const res = await state.api.send_message(text, photos.map(({ name, data }) => ({ name, data })));
-  if (res.command) {               // handled locally: "start a new project", "open my bird feeder"
-    $("prompt").value = "";
-    await showProject(res.project);
+
+  // Show the message and the "thinking" bubble at once; the round trip to Python can take a moment.
+  const sent = chat.addUser(text, photos.map((p) => p.preview));
+  state.pending = chat.pending(stage("Thinking…").chat);
+  setBusy(true, stage("Thinking…").pill);
+  $("prompt").value = "";
+  state.attachments = [];
+  renderAttachments();
+
+  // Undo the optimistic display (a command, or the message couldn't be sent): nothing was lost.
+  const takeBack = (restore) => {
+    sent.remove();
+    state.pending?.remove();
+    state.pending = null;
+    setBusy(false);
+    if (restore) {
+      $("prompt").value = text;
+      state.attachments = photos;
+      renderAttachments();
+    }
+  };
+
+  let res;
+  try {
+    await flushEdits(); // the user's latest tweaks must be in the file before the AI looks at it
+    res = await state.api.send_message(text, photos.map(({ name, data }) => ({ name, data })));
+  } catch (err) {
+    console.error(err);
+    takeBack(true);
+    chat.addInfo("That didn't send. Please try again.");
+    return;
+  }
+  if (res.command) {               // handled locally: "start a new project", "undo", "make labels"…
+    takeBack(false);
+    await handleCommand(res);
     return;
   }
   if (!res.started) {
+    takeBack(true);
     if (res.error) chat.addInfo(res.error);
     return;
   }
-  state.attachments = [];
-  renderAttachments();
-  $("prompt").value = "";
   if (!state.project) state.project = res.project; // the first message creates the project
-  chat.addUser(text, photos.map((p) => p.preview));
-  state.pending = chat.pending(stage("Thinking…").chat);
-  setBusy(true, stage("Thinking…").pill);
+}
+
+// Commands the app answers itself, without the AI.
+async function handleCommand(res) {
+  if (res.command === "undo") {
+    if (!res.started) chat.addInfo(res.error || "There's nothing to go back to yet.");
+    else if (!state.busy) setBusy(true, "Going back…");
+  } else if (res.command === "copies") {
+    $("copies").value = res.copies;
+    showCopiesNote(res);
+    chat.addInfo(res.note || `OK, I'll put ${res.copies} on the plate when you print.`);
+  } else if (res.project) {
+    await showProject(res.project);
+    if (res.building) setBusy(true, "Making your labels…");
+  }
 }
 
 handlers.status = (msg) => {
+  if (!state.busy) setBusy(true, stage(msg).pill); // a build the app started itself
   const s = stage(msg);
   state.pending?.status(s.chat);
   $("busy-text").textContent = s.pill;
@@ -208,6 +281,7 @@ handlers.turn_done = async (r) => {
   if (r.error) chat.addInfo(r.error);
   else chat.addAssistant(r.text || (r.changed ? "Here's your design." : ""), { chip: r.changed, choices: r.choices });
   state.project = { ...(state.project || {}), ...r.project };
+  setCanUndo(r.can_undo);
   if (r.changed) {
     showParams(r.params);
     state.edits = {};
@@ -225,6 +299,7 @@ handlers.turn_done = async (r) => {
 handlers.built = async (r) => {
   if (r.error) chat.addInfo(r.error);
   showParams(r.params);
+  setCanUndo(r.can_undo);
   setSaveStatus(r.status);
   state.stale = false; // on a failed build the file went back to match the model on screen
   await refreshModel();
@@ -300,6 +375,132 @@ function wireActions() {
     const res = await state.api.open_in_bambu();
     if (res.error) chat.addInfo(res.error);
   });
+  $("undo").addEventListener("click", async () => {
+    await flushEdits();
+    const res = await state.api.undo();
+    if (res.started) setBusy(true, "Going back…");
+    else if (res.error) chat.addInfo(res.error);
+  });
+  $("copies").addEventListener("change", async () => {
+    const res = await state.api.set_copies($("copies").value);
+    $("copies").value = res.copies;
+    showCopiesNote(res);
+  });
+}
+
+function showCopiesNote(res) {
+  const note = $("copies-note");
+  note.textContent = res.note || (res.copies > 1 ? `${res.copies} will be laid out on one plate.` : "");
+  note.hidden = !note.textContent;
+}
+
+// ---- the ⋯ menu, help, and the look-and-feel choices --------------------------------------
+
+const TEXT_SIZES = [
+  ["normal", "Normal", 1], ["large", "Large", 1.15], ["xlarge", "Extra large", 1.3],
+];
+
+function applyPrefs() {
+  const p = state.prefs;
+  const [, label, zoom] = TEXT_SIZES.find(([k]) => k === p.text_size) ?? TEXT_SIZES[0];
+  document.documentElement.style.zoom = zoom === 1 ? "" : String(zoom);
+  document.documentElement.classList.toggle("hc", p.high_contrast);
+  $("more-text").textContent = `Text size: ${label}`;
+  for (const [id, text, on] of [
+    ["more-contrast", "Strong colors", p.high_contrast],
+    ["more-still", "Keep the model still", p.still],
+  ]) {
+    $(id).textContent = `${text}: ${on ? "on" : "off"}`;
+    $(id).setAttribute("aria-checked", String(on));
+  }
+  $("plate").checked = p.show_plate;
+  viewer?.setPlate(p.show_plate);
+}
+
+async function setPref(change) {
+  state.prefs = { ...state.prefs, ...change };
+  applyPrefs();
+  try { state.prefs = { ...state.prefs, ...(await state.api.set_prefs(change)) }; }
+  catch (err) { console.error(err); } // the choice still applies for this session
+}
+
+// The AI helper picker. Choices come from the app, so a new provider's models just appear
+// (grouped by provider once there is more than one).
+function renderModels(models) {
+  const select = $("model-select");
+  select.replaceChildren();
+  const providers = [...new Set(models.choices.map((c) => c.provider))];
+  for (const prov of providers) {
+    const parent = providers.length > 1 ? document.createElement("optgroup") : select;
+    const items = models.choices.filter((c) => c.provider === prov);
+    if (parent !== select) { parent.label = items[0].provider_label; select.append(parent); }
+    for (const c of items) {
+      const o = document.createElement("option");
+      o.value = c.key;
+      o.textContent = c.label;
+      parent.append(o);
+    }
+  }
+  select.value = models.current;
+  const now = models.choices.find((c) => c.key === models.current);
+  $("model-hint").textContent = now?.hint ?? "";
+}
+
+function wireMenu() {
+  const menu = $("more-menu"), button = $("more");
+  const close = () => { menu.hidden = true; button.setAttribute("aria-expanded", "false"); };
+  button.addEventListener("click", (e) => {
+    e.stopPropagation();
+    menu.hidden = !menu.hidden;
+    button.setAttribute("aria-expanded", String(!menu.hidden));
+    if (!menu.hidden) menu.querySelector("button")?.focus();
+  });
+  document.addEventListener("click", close);
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== "Escape") return;
+    $("project-menu").hidden = true;
+    if (!menu.hidden) { close(); button.focus(); }
+  });
+  menu.addEventListener("click", (e) => e.stopPropagation());
+
+  $("more-copy").addEventListener("click", async () => {
+    close();
+    const p = await state.api.duplicate_project();
+    if (p) await showProject(p); else chat.addInfo("Open or make a design first, then I can copy it.");
+  });
+  $("more-share").addEventListener("click", async () => {
+    close();
+    if (!state.project) { chat.addInfo("Open or make a design first, then I can share it."); return; }
+    const res = await state.api.export_project();
+    if (res.error) chat.addInfo(res.error);
+    else if (res.saved) setSaveStatus(`Saved ${res.name}`);
+  });
+  $("more-import").addEventListener("click", async () => {
+    close();
+    const res = await state.api.import_project();
+    if (res.error) chat.addInfo(res.error);
+    else if (res.opened) await showProject(res.project);
+  });
+  $("more-text").addEventListener("click", () => {
+    const i = TEXT_SIZES.findIndex(([k]) => k === state.prefs.text_size);
+    setPref({ text_size: TEXT_SIZES[(i + 1) % TEXT_SIZES.length][0] });
+  });
+  $("more-contrast").addEventListener("click", () => setPref({ high_contrast: !state.prefs.high_contrast }));
+  $("more-still").addEventListener("click", () => {
+    setPref({ still: !state.prefs.still });
+    viewer.setSpinning(!state.prefs.still);
+  });
+  $("model-select").addEventListener("change", async (e) => {
+    const res = await state.api.set_model(e.target.value);
+    renderModels(res);
+    if (res.ok) chat.addInfo("Switched helpers. Your next message starts a fresh conversation with the new one, and your design carries over.");
+    else if (res.error) chat.addInfo(res.error);
+  });
+  $("plate").addEventListener("change", (e) => setPref({ show_plate: e.target.checked }));
+
+  const dialog = $("help-dialog");
+  $("help").addEventListener("click", () => dialog.showModal());
+  dialog.addEventListener("click", (e) => { if (e.target === dialog) dialog.close(); });
 }
 
 function wireUpdate() {
@@ -356,7 +557,15 @@ async function boot() {
   wireComposer();
   wireProjects();
   wireActions();
+  wireMenu();
   wireUpdate();
+  state.prefs = { ...state.prefs, ...(first.prefs ?? {}) };
+  if (first.models) renderModels(first.models);
+  applyPrefs();
+  // Respect the Mac's "reduce motion" setting, and the "keep the model still" choice.
+  if (state.prefs.still || window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
+    viewer.setSpinning(false);
+  }
 
   if (!bootError) {
     await showProject(first.project);

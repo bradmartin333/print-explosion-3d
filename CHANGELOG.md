@@ -3,6 +3,17 @@
 Plain-English notes for the people who use the app. The newest entry goes at the top; the app's update banner shows it.
 Write what users will notice, not how it was built.
 
+## 0.6.0
+- New **Go back one step** button (or just type "undo") takes back the last change.
+- A card on the preview now shows how big your model is, about how long it will take to print and how much plastic it needs. It warns you if something might be tricky to print.
+- Tick **Show the print plate** to see your model next to the printer's plate.
+- **Copies to print** puts several on one plate. You can also type "print 6 of these".
+- Say "make some labels" to get a sheet of name labels. Type your words in the box on the right, separated by commas.
+- The **⋯** menu can make a copy of a project, save one as a file to share, and open one that someone shared with you.
+- The same menu has an **AI helper** choice, plus bigger text, stronger colors and a way to stop the model turning.
+- The **?** button explains how everything works.
+- "Open in Bambu Studio" now names the file after your project, and shows you the file if Bambu Studio isn't installed.
+
 ## 0.5.1
 - The model no longer keeps turning by itself after you right-click it.
 - In the Adjust panel, every number box now lines up in the same column, even ones without a slider.

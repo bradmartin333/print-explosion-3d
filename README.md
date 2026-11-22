@@ -41,6 +41,13 @@ easy-to-install, easy-to-update, easy-to-use version, where she can make fun stu
 
 ![Adjusting a design: sliders, a dropdown and a checkbox next to the model](docs/screenshots/adjust.png)
 
+## Handy extras
+- **Go back one step.** Press the button (or type "undo") to take back the last change, as many times as you need.
+- **Know before you print.** A card on the preview shows the size (in mm and inches), about how long the print takes and how much plastic it uses, and warns about hard-to-print shapes. **Show the print plate** puts the model next to the printer's plate.
+- **Several at once.** **Copies to print** (or "print 6 of these") lays copies out on one plate.
+- **Labels.** Say "make some labels", then type the words, separated by commas, in the Adjust box.
+- **Copy, share, help.** The **⋯** menu makes a copy of a project, saves one as a `.pe3d` file to send to someone, and opens one you were sent. It also holds the **AI helper** picker, bigger text, stronger colors and a "keep the model still" switch. **?** opens a short guide.
+
 ## What it's built for
 - **Easy prints.** Designs fit the A1 mini's 180 mm bed, sit flat, avoid supports, and have a small
   chamfer on the bottom edge so they print without a brim and pop off the plate.
@@ -56,13 +63,15 @@ easy-to-install, easy-to-update, easy-to-use version, where she can make fun stu
 
 ## Under the hood
 - The chat uses the Anthropic API (Claude), behind a small provider interface so another AI can be
-  plugged in. Cheap local logic (regex, fuzzy matching) handles anything that doesn't need a model, to
+  plugged in. The models offered in the **AI helper** picker are listed in `ai/catalog.py`; a new
+  provider adds its models there. Cheap local logic (regex, fuzzy matching) handles anything that doesn't need a model, to
   save credits.
 - The designer writes parametric [OpenSCAD](https://openscad.org) files, rendered locally to STL.
 - UI is a pywebview window with a vanilla-JS Three.js viewer. No build step.
 - Projects live in `~/Documents/Print Explosion 3D/`.
 
-Architecture and conventions are in [`CLAUDE.md`](CLAUDE.md).
+Architecture and conventions are in [`CLAUDE.md`](CLAUDE.md). CI (`.github/workflows/ci.yml`) runs
+lint, types and tests, and builds the sample designs with a real OpenSCAD.
 
 ## Running it
 Requires macOS, [uv](https://docs.astral.sh/uv/), OpenSCAD 2025 or newer, and an Anthropic API key

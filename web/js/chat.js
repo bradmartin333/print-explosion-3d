@@ -58,6 +58,7 @@ export function createChat(root, { onChoice }) {
     }
     if (text) div.append(document.createTextNode(text));
     scroll();
+    return div;
   }
 
   function addAssistant(text, { chip = false, choices = [] } = {}) {
@@ -88,7 +89,7 @@ export function createChat(root, { onChoice }) {
 
   function show(display) {
     root.replaceChildren();
-    if (!display?.length) { addAssistant(GREETING); return; }
+    if (!display?.length) { addAssistant(GREETING, { choices: ["Make some labels"] }); return; }
     display.forEach((e, i) => {
       if (e.role === "user") addUser(e.text, [], (e.images || []).length);
       else if (e.role === "info") addInfo(e.text);
