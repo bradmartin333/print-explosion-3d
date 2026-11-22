@@ -17,8 +17,9 @@ from print_explosion_3d.scad.runner import render
 
 ROOT = Path(__file__).resolve().parent.parent
 # spice_jars_photo is a picture of a shelf for the README (scripts/screenshots.py renders it as a
-# stand-in "photo"), not something to print.
-NOT_PRINTABLE = {"spice_jars_photo"}
+# stand-in "photo"), not something to print. The mushroom and the spike are on purpose the shapes
+# the preview card warns about; test_warning_demos_still_warn keeps them honest.
+NOT_PRINTABLE = {"spice_jars_photo", "garden_mushroom", "plant_spike"}
 DEMOS = [
     p for p in sorted((ROOT / "scripts" / "demo").glob("*.scad")) if p.stem not in NOT_PRINTABLE
 ]
@@ -65,3 +66,17 @@ def test_printability_notes_are_quiet(built):
     name, _scad, _result, out = built
     info = analyze(out.read_bytes())
     assert info is not None and info.ready, f"{name}: {info and info.notes}"
+
+
+@pytest.mark.parametrize(
+    ("demo", "warning"),
+    [("garden_mushroom", "supports"), ("plant_spike", "Tall and narrow")],
+)
+def test_warning_demos_still_warn(tmp_path, demo, warning):
+    src, out = tmp_path / "model.scad", tmp_path / "model.stl"
+    src.write_text((ROOT / "scripts" / "demo" / f"{demo}.scad").read_text(encoding="utf-8"))
+    result = render(src, out)
+    assert result.ok, result.describe_problems()
+    info = analyze(out.read_bytes())
+    assert info is not None and not info.ready
+    assert any(warning in note for note in info.notes), info.notes

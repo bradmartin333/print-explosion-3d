@@ -130,7 +130,7 @@ button.icon { padding: 0; width: var(--control-h); font-size: 16px; }
 .msg .photos img { width: 84px; height: 84px; object-fit: cover; border-radius: 8px; }
 .msg .photo-tag { font-size: 12px; opacity: .75; margin-bottom: 4px; }
 .choices { display: flex; flex-wrap: wrap; gap: 6px; align-self: flex-start; }
-.choices button { background: var(--panel); border: 1px solid var(--accent); color: var(--accent-ink); font-weight: 500; }
+.choices button { background: var(--panel); border: 1px solid var(--accent); color: var(--ink); font-weight: 500; }
 .choices button:hover { background: var(--soft); }
 .composer { flex-direction: column; gap: 8px; }
 .composer-row { display: flex; gap: 8px; align-items: stretch; }

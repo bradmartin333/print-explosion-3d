@@ -4,22 +4,15 @@ Plain-English notes for the people who use the app. The newest entry goes at the
 Write what users will notice, not how it was built.
 
 ## 0.6.0
-- New **Go back one step** button takes back the last change.
-- A card on the preview now shows how big your model is, roughly how long it will take to print and how much plastic it needs. It warns you if something might be tricky to print.
-- Tick **Show the print plate** to see your model next to the printer's plate.
-- Zoom with a pinch or a two-finger scroll on the trackpad.
-- Say "make some labels" to get a sheet of name labels. Type your words in the box on the right, separated by commas.
-- The **⋯** menu can make a copy of a project, save one as a file to share, and open one that someone shared with you.
-- The same menu has an **AI helper** choice, a **dark mode** (it follows your Mac until you choose), and a way to stop the model turning.
-- The **?** button explains how everything works.
-- The project buttons sit on their own row, and the project list always shows the full names.
-- The controls under the preview fit better in a smaller window.
-- Your message now appears in the chat the moment you press Enter, and the preview shows a big "working" card while the designer is busy, so it's clear something is still running.
-- The AI cost estimate now shows at the bottom of the window by default. The photo button is easier to see in dark mode.
-- Problem messages in the chat now tell you when things are sorted out: once the same kind of thing works, the red message turns green ("That worked") and fades. Small heads-up notes fade by themselves.
-- The designer's replies are shorter now, with no measurements or tweak suggestions unless you ask.
-- The "Design updated" tag no longer appears after every reply.
-- "Open in Bambu Studio" now names the file after your project, and shows you the file if Bambu Studio isn't installed.
+- See before you print: a card on the preview shows the size, roughly how long it will take and how much plastic it needs, and warns about shapes that are tricky to print. Tick **Show the print plate** to see it next to the printer's plate.
+- **Go back one step** takes back the last change.
+- Say "make some labels" for a sheet of name labels, then type your words in the box on the right.
+- Zoom with a pinch or a two-finger scroll.
+- The **⋯** menu can copy a project, share one as a file, open one you were sent, switch the AI helper, turn on dark mode and stop the model turning. The **?** button explains everything.
+- Your message shows in the chat the moment you press Enter, and a big "working" card shows while the designer is busy.
+- Problems in the chat turn green ("That worked") and fade once they're sorted out.
+- Shorter replies, and the AI cost now shows at the bottom of the window.
+- "Open in Bambu Studio" names the file after your project, and shows you the file if Bambu Studio isn't installed.
 
 ## 0.5.1
 - The model no longer keeps turning by itself after you right-click it.
