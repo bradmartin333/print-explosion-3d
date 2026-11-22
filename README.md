@@ -34,12 +34,32 @@ easy-to-install, easy-to-update, easy-to-use version, where she can make fun stu
    straight to the slicer.
 
 <p align="center">
-  <img src="docs/screenshots/chat.png" alt="Chatting with the designer: a photo, a design update and quick-reply buttons" width="380">
+  <img src="docs/screenshots/chat.png" alt="Chatting with the designer: a photo, a reply and quick-reply buttons" width="380">
   &nbsp;
   <img src="docs/screenshots/projects.png" alt="Switching between saved projects, each with a picture" width="390" align="top">
 </p>
 
 ![Adjusting a design: sliders, a dropdown and a checkbox next to the model](docs/screenshots/adjust.png)
+
+Dark mode follows your Mac, or switch it from the **⋯** menu:
+
+![The same window in dark mode](docs/screenshots/dark.png)
+
+If a shape might be tricky to print, the card on the preview says so before you waste any plastic:
+
+<p align="center">
+  <img src="docs/screenshots/heads-up-overhang.png" alt="A mushroom with a wide cap: the card warns that parts hang over empty space and may need supports" width="380">
+  &nbsp;
+  <img src="docs/screenshots/heads-up-tall.png" alt="A tall thin spike: the card warns that it may wobble or snap" width="380">
+</p>
+
+## Handy extras
+- **Go back one step.** Press the button to take back the last change, as many times as you need.
+- **Know before you print.** A card on the preview shows the size (in mm and inches), roughly how long the print takes and how much plastic it uses, and warns about hard-to-print shapes. **Show the print plate** puts the model next to the printer's plate. Pinch or two-finger scroll to zoom.
+- **Labels.** Say "make some labels" (or "make labels for sugar, flour and salt"), then edit the words, separated by commas, in the Adjust box.
+- **Copy and share.** The **⋯** menu makes a copy of a project, saves one as a `.pe3d` file to send to someone, and opens one you were sent.
+- **Pick the AI helper.** The same menu chooses which Claude model designs (Everyday, Extra careful, or Quick and thrifty). It also has dark mode and a "keep the model still" switch.
+- **Help.** The **?** button opens a short guide.
 
 ## What it's built for
 - **Easy prints.** Designs fit the A1 mini's 180 mm bed, sit flat, avoid supports, and have a small
@@ -56,13 +76,15 @@ easy-to-install, easy-to-update, easy-to-use version, where she can make fun stu
 
 ## Under the hood
 - The chat uses the Anthropic API (Claude), behind a small provider interface so another AI can be
-  plugged in. Cheap local logic (regex, fuzzy matching) handles anything that doesn't need a model, to
-  save credits.
+  plugged in. The models in the **AI helper** picker are listed in `ai/catalog.py`; a new provider
+  adds its models there. Cheap local logic (regex, fuzzy matching) handles anything that doesn't
+  need a model, to save credits.
 - The designer writes parametric [OpenSCAD](https://openscad.org) files, rendered locally to STL.
 - UI is a pywebview window with a vanilla-JS Three.js viewer. No build step.
 - Projects live in `~/Documents/Print Explosion 3D/`.
 
-Architecture and conventions are in [`CLAUDE.md`](CLAUDE.md).
+Architecture and conventions are in [`CLAUDE.md`](CLAUDE.md). CI (`.github/workflows/ci.yml`) runs
+lint, types and tests, and builds the sample designs with a real OpenSCAD.
 
 ## Running it
 Requires macOS, [uv](https://docs.astral.sh/uv/), OpenSCAD 2025 or newer, and an Anthropic API key
@@ -75,8 +97,8 @@ uv run print-explosion
 ```
 
 `.env.example` lists every setting (colors, timeouts, model, and so on) with its default and a short
-comment. Only the API key is required; anything left out uses its default. Set `PE_SHOW_COST=true`
-to show a running AI cost estimate in the status bar.
+comment. Only the API key is required; anything left out uses its default. The status bar shows a
+running AI cost estimate; set `PE_SHOW_COST=false` to hide it.
 
 `.env.example` is generated from `config.SPEC`. Regenerate it after adding a setting:
 

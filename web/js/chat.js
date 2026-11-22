@@ -1,7 +1,9 @@
 // The chat transcript. Plain DOM; no code or technical text ever reaches it.
 
+const NOTICE_MS = 8000;
+const RESOLVED_MS = 2500;
 const GREETING =
-  "Hi! What would you like to make today? Tell me about it, or share a photo of something you'd like to copy.";
+  "What would you like to make? Describe it, or share a photo.";
 
 export function createChat(root, { onChoice }) {
   const scroll = () => { root.scrollTop = root.scrollHeight; };
@@ -12,13 +14,6 @@ export function createChat(root, { onChoice }) {
     if (text) div.append(document.createTextNode(text));
     root.append(div);
     return div;
-  }
-
-  function addChip(div) {
-    const chip = document.createElement("span");
-    chip.className = "chip";
-    chip.textContent = "Design updated";
-    div.append(document.createElement("br"), chip);
   }
 
   const clearChoices = () => root.querySelectorAll(".choices").forEach((n) => n.remove());
@@ -58,16 +53,37 @@ export function createChat(root, { onChoice }) {
     }
     if (text) div.append(document.createTextNode(text));
     scroll();
+    return div;
   }
 
-  function addAssistant(text, { chip = false, choices = [] } = {}) {
-    const div = bubble("assistant", text);
-    if (chip) addChip(div);
+  function addAssistant(text, { choices = [] } = {}) {
+    bubble("assistant", text);
     addChoices(choices);
     scroll();
   }
 
-  function addInfo(text) { bubble("info", text); scroll(); }
+  // A problem (red) stays until something of the same `key` works, then it says so and fades.
+  // A notice (grey) is just a heads-up and fades by itself.
+  const fade = (div) => { div.classList.add("leaving"); setTimeout(() => div.remove(), 450); };
+
+  function addInfo(text, { key = "other", notice = false } = {}) {
+    const div = bubble(notice ? "info notice" : "info", text);
+    div.dataset.key = key;
+    if (notice) setTimeout(() => fade(div), NOTICE_MS);
+    scroll();
+    return div;
+  }
+
+  function resolve(...keys) {
+    const found = [...root.querySelectorAll(".msg.info:not(.notice):not(.resolved)")]
+      .filter((d) => keys.includes(d.dataset.key));
+    found.slice(0, -1).forEach((d) => d.remove()); // one "that worked" is plenty
+    const last = found.at(-1);
+    if (!last) return;
+    last.classList.add("resolved");
+    last.textContent = "✓ That worked";
+    setTimeout(() => fade(last), RESOLVED_MS);
+  }
 
   // A reply that is still arriving: shows the status, then streamed text.
   function pending(statusText = "Thinking…") {
@@ -91,10 +107,10 @@ export function createChat(root, { onChoice }) {
     if (!display?.length) { addAssistant(GREETING); return; }
     display.forEach((e, i) => {
       if (e.role === "user") addUser(e.text, [], (e.images || []).length);
-      else if (e.role === "info") addInfo(e.text);
-      else addAssistant(e.text, { chip: !!e.chip, choices: i === display.length - 1 ? e.choices : [] });
+      else if (e.role === "info") addInfo(e.text, { key: "ai" });
+      else addAssistant(e.text, { choices: i === display.length - 1 ? e.choices : [] });
     });
   }
 
-  return { show, addUser, addAssistant, addInfo, pending };
+  return { show, addUser, addAssistant, addInfo, resolve, pending };
 }

@@ -46,7 +46,7 @@ cube([width, 30, height]);
 
 UI_PROBE = """JSON.stringify({
   messages: document.querySelectorAll('.msg').length,
-  chip: !!document.querySelector('.chip'),
+  answered: !!document.querySelector('.msg.assistant'),
   controls: document.querySelectorAll('.param').length,
   project: document.getElementById('project-name').textContent,
   // The camera and Send buttons are stacked beside the message box: same height as each other,
@@ -86,7 +86,7 @@ def seed_workspace(root: Path) -> None:
         {
             "display": [
                 {"role": "user", "text": "A small box please"},
-                {"role": "assistant", "text": "Here's a little box.", "chip": True},
+                {"role": "assistant", "text": "Here's a little box."},
             ]
         }
     )
@@ -163,7 +163,7 @@ def main() -> int:
         str(state.get("status", "")).startswith("Connected")
         and state.get("triangles", 0) > 0
         and result.get("app_name") == TITLE
-        and ui.get("chip") is True
+        and ui.get("answered") is True
         and ui.get("controls", 0) >= 3
         and composer_lines_up(ui.get("composer"))
     )

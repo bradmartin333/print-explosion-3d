@@ -12,7 +12,7 @@ const MAX_ELEVATION = 85;
 const DRAG_THRESHOLD_PX = 4; // smaller moves are still a click
 const DRAG_DEG_PER_PX = 0.4;
 
-export function createViewer(container, theme, { onElevation } = {}) {
+export function createViewer(container, theme, { onElevation, onZoom } = {}) {
   const renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setPixelRatio(window.devicePixelRatio);
   renderer.shadowMap.enabled = true;
@@ -49,8 +49,28 @@ export function createViewer(container, theme, { onElevation } = {}) {
   });
   let mesh = null;
 
+  // The printer's plate, drawn flat under the model (it doesn't turn with it). Hidden unless asked for.
+  const PLATE_MM = 180;
+  const plate = new THREE.Group();
+  const plateTop = new THREE.Mesh(
+    new THREE.PlaneGeometry(PLATE_MM, PLATE_MM),
+    new THREE.MeshBasicMaterial({ color: 0xded6cc, transparent: true, opacity: 0.55 }),
+  );
+  const outline = new THREE.LineLoop(
+    new THREE.BufferGeometry().setFromPoints([
+      new THREE.Vector3(-90, -90, 0), new THREE.Vector3(90, -90, 0),
+      new THREE.Vector3(90, 90, 0), new THREE.Vector3(-90, 90, 0),
+    ]),
+    new THREE.LineBasicMaterial({ color: 0x9a8f84 }),
+  );
+  plate.add(plateTop, outline);
+  plate.position.z = -0.05;
+  plate.visible = false;
+  scene.add(plate);
+
   const view = {
     zoom: 1, elevationDeg: DEFAULT_ELEVATION, spinning: true, radius: 50, center: new THREE.Vector3(),
+    showPlate: false,
   };
 
   let loads = 0; // models shown so far, so scripts can tell a new model from the last one
@@ -101,7 +121,9 @@ export function createViewer(container, theme, { onElevation } = {}) {
     // Fit the bounding sphere (the spin sweeps it) inside the narrower of the two FOVs.
     const vFov = THREE.MathUtils.degToRad(camera.fov);
     const hFov = 2 * Math.atan(Math.tan(vFov / 2) * camera.aspect);
-    const fitDistance = view.radius / Math.sin(Math.min(vFov, hFov) / 2);
+    // With the plate showing, fit the whole plate, so the model's size reads against it.
+    const radius = view.showPlate ? Math.max(view.radius, PLATE_MM * 0.6) : view.radius;
+    const fitDistance = radius / Math.sin(Math.min(vFov, hFov) / 2);
     const distance = fitDistance * 1.5 / view.zoom;
     const elev = THREE.MathUtils.degToRad(view.elevationDeg);
     camera.position.set(0, -distance * Math.cos(elev), view.center.z + distance * Math.sin(elev));
@@ -121,6 +143,13 @@ export function createViewer(container, theme, { onElevation } = {}) {
   new ResizeObserver(resize).observe(container);
   resize();
 
+  const ZOOM_MIN = 0.5, ZOOM_MAX = 2.5;
+  function applyZoom(z) {
+    view.zoom = THREE.MathUtils.clamp(z, ZOOM_MIN, ZOOM_MAX);
+    placeCamera();
+    onZoom?.(view.zoom);
+  }
+
   function setElevation(deg) {
     view.elevationDeg = THREE.MathUtils.clamp(deg, -MAX_ELEVATION, MAX_ELEVATION);
     placeCamera();
@@ -129,6 +158,20 @@ export function createViewer(container, theme, { onElevation } = {}) {
   // A click toggles spinning; a drag turns and tilts the model and leaves it paused there.
   const canvas = renderer.domElement;
   let drag = null;
+
+  // Trackpad: a two-finger scroll zooms, and so does a pinch. Safari/WebKit reports a pinch as
+  // gesture events; other engines send it as a wheel event with ctrl held.
+  canvas.addEventListener("wheel", (e) => {
+    e.preventDefault();
+    applyZoom(view.zoom * Math.exp(-e.deltaY * (e.ctrlKey ? 0.01 : 0.004)));
+  }, { passive: false });
+  let pinchStart = null;
+  canvas.addEventListener("gesturestart", (e) => { e.preventDefault(); pinchStart = view.zoom; });
+  canvas.addEventListener("gesturechange", (e) => {
+    e.preventDefault();
+    if (pinchStart != null) applyZoom(pinchStart * e.scale);
+  });
+  canvas.addEventListener("gestureend", (e) => { e.preventDefault(); pinchStart = null; });
   canvas.addEventListener("pointerdown", (e) => {
     if (e.button !== 0 || e.ctrlKey) return; // ctrl-click is a right-click on a Mac
     drag = { x: e.clientX, y: e.clientY, moved: false };
@@ -172,8 +215,16 @@ export function createViewer(container, theme, { onElevation } = {}) {
     loadStl,
     clear,
     get hasModel() { return mesh !== null; },
-    setZoom(z) { view.zoom = z; placeCamera(); },
+    setZoom(z) { applyZoom(z); },
     setElevation,
+    // Dark mode: the background, and a plate that doesn't glare against it.
+    setDark(on, background) {
+      scene.background = new THREE.Color(background);
+      plateTop.material.color.set(on ? 0x3a352f : 0xded6cc);
+      outline.material.color.set(on ? 0x7a7068 : 0x9a8f84);
+      ground.material.opacity = on ? Math.min(0.5, theme.shadow_opacity * 2.2) : theme.shadow_opacity;
+    },
+    setPlate(on) { view.showPlate = on; plate.visible = on; placeCamera(); },
     get elevation() { return view.elevationDeg; },
     setSpinning(on) { view.spinning = on; },
     setTurn(deg) { spinner.rotation.z = THREE.MathUtils.degToRad(deg); },

@@ -57,7 +57,24 @@ SEEDED = [  # (name, design file, what the user asked, what the designer said, m
         "Here's a six-sided pot with a gentle twist and a drain hole in the bottom.",
         "Twisted hexagonal succulent pot with drain hole.",
     ),
+    (
+        "Garden Mushroom",
+        "garden_mushroom.scad",
+        "A toadstool for the flower bed",
+        "Here's a mushroom with a wide cap on a short stem.",
+        "Garden toadstool with a wide flat-bottomed cap.",
+    ),
+    (
+        "Plant Spike",
+        "plant_spike.scad",
+        "A tall stake to hold up my tomato plant",
+        "Here's a tall, thin stake with a pointed end to push into the soil.",
+        "Tall thin plant stake with a pointed tip.",
+    ),
 ]
+
+# Models the preview card warns about: (project, picture name).
+HEADS_UP = [("Garden Mushroom", "heads-up-overhang"), ("Plant Spike", "heads-up-tall")]
 
 ASK = "Could you make something like this for my spice jars?"
 REPLY_1 = """Here's a rack with steps, so you can read every label. It holds three jars on \
@@ -91,6 +108,7 @@ def build(scad: Path, stl: Path) -> None:
 
 def seed(root: Path) -> None:
     ws = Workspace(root, trash=lambda p: None)
+    ws.set_prefs({"dark_mode": False})  # README pictures are always light, whatever the Mac uses
     for name, design, asked, answered, note in SEEDED:
         project = ws.create(name)
         project.save_scad((DEMO / design).read_text())
@@ -98,7 +116,7 @@ def seed(root: Path) -> None:
         project.update_meta(note=note)
         chat = [
             {"role": "user", "text": asked},
-            {"role": "assistant", "text": answered, "chip": True},
+            {"role": "assistant", "text": answered},
         ]
         project.save_chat({"display": chat})
         time.sleep(1.1)  # distinct "updated" times keep the project list in this order
@@ -158,6 +176,18 @@ def settle_view(window: webview.Window, turn: float) -> None:
     time.sleep(0.3)
 
 
+def show_project(window: webview.Window, name: str) -> None:
+    """Open a project from the list and wait for its model to be on screen, held still."""
+    before = loads(window)
+    pick = (
+        "[...document.querySelectorAll('#project-menu li')]"
+        f".find((li) => li.querySelector('.nm').textContent === {json.dumps(name)}).click()"
+    )
+    js(window, pick)
+    model_ready(window, name, before)
+    settle_view(window, -30)
+
+
 def make_thumbnails(window: webview.Window, root: Path) -> None:
     """Open each seeded project in the UI and save its picture, as a real build would."""
     for name, *_ in SEEDED:
@@ -196,10 +226,12 @@ def drop_photo(window: webview.Window, jpeg: bytes) -> None:
     wait_for(window, "!document.getElementById('attachments').hidden")
 
 
-def turn_finished(window: webview.Window, chips: int) -> None:
+def turn_finished(window: webview.Window, messages: int) -> None:
+    """Wait until `messages` of the user's messages have been answered and nothing is running."""
     wait_for(
         window,
-        f"document.querySelectorAll('.chip').length >= {chips}"
+        f"document.querySelectorAll('.msg.user').length >= {messages}"
+        " && !document.querySelector('.msg.pending')"
         " && document.getElementById('busy').hidden",
         TURN_TIMEOUT_S,
     )
@@ -285,6 +317,30 @@ def shoot(window: webview.Window, out_dir: Path, root: Path, jpeg: bytes, result
             raise RuntimeError("WebKit snapshot failed")
         box = rect(window, [".chat-head", "#project-menu"], 12)
         save(out_dir / "projects.png", crop(menu, box, scale))
+
+        # The preview card's "Heads up" state: one model that hangs over empty space, one that is
+        # tall and thin.
+        for name, picture in HEADS_UP:
+            show_project(window, name)
+            js(window, "document.activeElement.blur()")
+            wait_for(window, "!document.getElementById('model-info').hidden")
+            warned = window_png(window)
+            if warned is None:
+                raise RuntimeError("WebKit snapshot failed")
+            box = rect(window, [".panel.viewer"], 6)
+            save(out_dir / f"{picture}.png", crop(warned, box, scale))
+
+        # The same window in dark mode, switched on through the real menu.
+        js(window, "document.dispatchEvent(new KeyboardEvent('keydown', {key: 'Escape'}))")
+        js(window, "document.getElementById('more').click()")
+        js(window, "document.getElementById('more-dark').click()")
+        wait_for(window, "document.documentElement.classList.contains('dark')")
+        time.sleep(0.6)  # the preview repaints on the dark background
+        js(window, "document.activeElement.blur()")
+        dark = window_png(window)
+        if dark is None:
+            raise RuntimeError("WebKit snapshot failed")
+        save(out_dir / "dark.png", dark, WIDE_PX)
         result["ok"] = True
     except Exception as exc:  # report, then still close the window
         result["error"] = repr(exc)

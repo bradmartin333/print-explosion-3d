@@ -8,11 +8,11 @@ def test_defaults_when_env_is_empty():
     assert s.anthropic_api_key is None
     assert s.provider == "anthropic"
     assert s.model == "claude-sonnet-5-5"
-    assert s.show_cost is False
+    assert s.show_cost is True
     assert s.update_check is True
     assert s.effort == "medium"
     assert s.max_auto_fixes == 2
-    assert s.show_cost is False
+    assert s.show_cost is True
     assert s.workspace_dir == Path.home() / "Documents" / "Print Explosion 3D"
     assert s.openscad_bin is None
     assert s.render_timeout == 120

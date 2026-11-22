@@ -1,0 +1,32 @@
+# main is what the parents' Macs update from, so nothing merges red.
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+
+jobs:
+  checks:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: uv sync --frozen
+      - run: uv run ruff check
+      - run: uv run ruff format --check
+      - run: uv run ty check
+      - name: Tests that don't need OpenSCAD
+        run: uv run pytest -m "not openscad"
+
+  designs:
+    # Builds the sample designs with a real OpenSCAD (2025 or newer is required).
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: uv sync --frozen
+      - run: brew install --cask openscad@snapshot
+      - run: uv run pytest -m openscad
+        env:
+          OPENSCAD_BIN: /Applications/OpenSCAD.app/Contents/MacOS/OpenSCAD

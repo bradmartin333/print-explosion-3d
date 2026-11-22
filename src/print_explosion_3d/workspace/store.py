@@ -18,7 +18,9 @@ from __future__ import annotations
 import contextlib
 import json
 import re
+import shutil
 import time
+import zipfile
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -29,6 +31,10 @@ from print_explosion_3d.workspace.trash import move_to_trash
 
 HISTORY_LIMIT = 20
 STATE_FILE = "state.json"
+PREFS_FILE = "prefs.json"
+SHARE_EXTENSION = ".pe3d"
+_SHARE_FILES = {"project.json", "model.scad", "model.stl", "thumbnail.png", "chat.json"}
+MAX_SHARE_BYTES = 200_000_000  # a shared project is a few MB; this is a safety net
 EMPTY_PROJECT_GRACE = 24 * 3600  # an untouched new project is kept for a day
 
 _BAD_NAME_CHARS = re.compile(r'[\\/:*?"<>|\x00-\x1f]')
@@ -57,6 +63,9 @@ def _folder_name(name: str) -> str:
     cleaned = _BAD_NAME_CHARS.sub(" ", name)
     cleaned = " ".join(cleaned.split()).strip(". ")
     return cleaned[:60].strip(". ") or "Untitled"
+
+
+safe_file_name = _folder_name  # the same cleaning makes a good file name
 
 
 @dataclass(frozen=True, slots=True)
@@ -160,6 +169,34 @@ class Project:
     def save_stl(self, data: bytes) -> None:
         _write_atomic(self.stl_path, data)
 
+    def can_undo(self) -> bool:
+        current = self.read_scad()
+        return any(self._read(v) != current for v in self.history())
+
+    def undo(self) -> bool:
+        """Go back to the newest earlier version that differs from the current one.
+
+        The version it came from is dropped from history, so pressing it again keeps stepping
+        back. The caller rebuilds the model afterwards. False if there is nothing to go back to.
+        """
+        current = self.read_scad()
+        for version in reversed(self.history()):
+            text = self._read(version)
+            if text != current:
+                _write_atomic(self.scad_path, text.encode("utf-8"))
+                version.unlink(missing_ok=True)
+                self.update_meta()
+                return True
+            version.unlink(missing_ok=True)  # same as now: nothing to go back to
+        return False
+
+    @staticmethod
+    def _read(path: Path) -> str:
+        try:
+            return path.read_text(encoding="utf-8")
+        except OSError:
+            return ""
+
     # --- chat and attachments ---------------------------------------------------------------
 
     def read_chat(self) -> dict[str, Any]:
@@ -257,6 +294,78 @@ class Workspace:
         """Change the display name only; the folder keeps its name so paths stay stable."""
         if name.strip():
             project.update_meta(name=name.strip())
+
+    def duplicate(self, folder: str) -> Project | None:
+        """A separate copy of a project ("Bird feeder copy"), ready to change without risk."""
+        source = self.get(folder)
+        if source is None:
+            return None
+        copy = self.create(f"{source.name} copy")
+        for name in ("model.scad", "model.stl", "thumbnail.png", "chat.json"):
+            if (source.path / name).is_file():
+                shutil.copyfile(source.path / name, copy.path / name)
+        if source.attachments_dir.is_dir():
+            shutil.copytree(source.attachments_dir, copy.attachments_dir)
+        copy.update_meta(note=source.note)
+        return copy
+
+    # --- sharing ----------------------------------------------------------------------------
+
+    def pack(self, folder: str, target: Path) -> bool:
+        """Write one project into a single shareable file. False if it can't be written."""
+        project = self.get(folder)
+        if project is None:
+            return False
+        try:
+            with zipfile.ZipFile(target, "w", zipfile.ZIP_DEFLATED) as z:
+                for name in sorted(_SHARE_FILES):
+                    if (project.path / name).is_file():
+                        z.write(project.path / name, name)
+                if project.attachments_dir.is_dir():
+                    for photo in sorted(project.attachments_dir.iterdir()):
+                        if photo.is_file():
+                            z.write(photo, f"attachments/{photo.name}")
+        except OSError:
+            return False
+        return True
+
+    def unpack(self, source: Path) -> Project | None:
+        """Add a shared project as a new one. None if the file isn't one of ours."""
+        try:
+            with zipfile.ZipFile(source) as z:
+                members = {i.filename: i for i in z.infolist() if not i.is_dir()}
+                if sum(i.file_size for i in members.values()) > MAX_SHARE_BYTES:
+                    return None
+                allowed = {
+                    n
+                    for n in members
+                    if n in _SHARE_FILES
+                    or (n.startswith("attachments/") and n.count("/") == 1 and ".." not in n)
+                }
+                if "model.scad" not in allowed and "project.json" not in allowed:
+                    return None
+                try:
+                    meta = json.loads(z.read("project.json")) if "project.json" in allowed else {}
+                except ValueError:
+                    meta = {}
+                meta = meta if isinstance(meta, dict) else {}
+                name = meta.get("name") if isinstance(meta.get("name"), str) else ""
+                project = self.create(name or Path(source).stem)
+                for member in sorted(allowed - {"project.json"}):
+                    _write_atomic(project.path / member, z.read(member))
+                note = meta.get("note")
+                project.update_meta(note=note if isinstance(note, str) else "")
+                return project
+        except (OSError, zipfile.BadZipFile, KeyError):
+            return None
+
+    # --- preferences (text size and the like) -------------------------------------------------
+
+    def prefs(self) -> dict[str, Any]:
+        return _read_json(self.root / PREFS_FILE)
+
+    def set_prefs(self, prefs: dict[str, Any]) -> None:
+        _write_atomic(self.root / PREFS_FILE, json.dumps(prefs).encode())
 
     def delete(self, folder: str) -> bool:
         """Move a project to the Trash. False if it doesn't exist or can't be trashed."""

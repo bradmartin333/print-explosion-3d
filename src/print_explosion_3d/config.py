@@ -43,7 +43,7 @@ SPEC: tuple[Setting, ...] = (
     Setting("PE_MODEL", "claude-sonnet-5-5", "Model used for the designer chat.", "AI"),
     Setting("PE_EFFORT", "medium", f"Thinking effort: {' | '.join(EFFORT_LEVELS)}.", "AI"),
     Setting("PE_MAX_AUTO_FIXES", "2", "Automatic AI retries when a design fails to build.", "AI"),
-    Setting("PE_SHOW_COST", "false", "Show a running cost estimate in the status bar.", "AI"),
+    Setting("PE_SHOW_COST", "true", "Show a running cost estimate in the status bar.", "AI"),
     Setting("PE_WORKSPACE_DIR", "", "Projects. Empty = ~/Documents/Print Explosion 3D", "Files"),
     Setting("OPENSCAD_BIN", "", "OpenSCAD binary. Empty = PATH, then /Applications.", "Files"),
     Setting("PE_RENDER_TIMEOUT", "120", "Seconds before a build is given up (5 to 600).", "Files"),

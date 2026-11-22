@@ -37,11 +37,16 @@ here (no Screen Recording permission).
     `api.py` is the JS bridge: thin, and only public methods are exposed.
   - `macos.py`: menu bar/Dock name for a bare Python process (CFBundleName + a private
     LaunchServices rename, all failures swallowed). Icon is `assets/icon.png`.
-  - `ai/`: `Provider` protocol, `anthropic_provider.py`, `fake_provider.py`.
+  - `ai/`: `Provider` protocol, `anthropic_provider.py`, `fake_provider.py`. `catalog.py` lists the models
+    the in-app picker offers; a new provider registers in `make_provider` and lists its models there.
+    Picking a model starts a fresh conversation (seeded like a resume), never replays old thinking.
   - `designer/`: system prompt, response-protocol parsing, turn loop with auto-fix.
-  - `scad/`: `runner.py` and `params.py`. `lib/` is on `OPENSCADPATH` and holds
+  - `scad/`: `runner.py` and `params.py`. `stl.py` (read binary STL), `estimate.py` (size,
+    time, plastic, printability notes) and `labels.py` (the label-sheet template) are all local. `lib/` is on `OPENSCADPATH` and holds
     printable-lib + the A1 mini profile.
-  - `workspace/` (projects on disk) and `bambu.py` (open in Bambu Studio).
+  - `workspace/` (projects on disk, undo, copy, `.pe3d` share files, `prefs.json`) and `bambu.py`.
+- `.github/workflows/ci.yml`: ruff, ty, pytest; the `openscad` tests (incl. `test_golden_designs.py`) run
+  in their own job. Add new printable demos to `scripts/demo/` and they join the golden suite.
 - `web/`: vanilla ES modules, no build step. `js/viewer.js` is Three.js (Z-up, shadow, no grid).
   `vendor/three/` is pinned and vendored; don't hand-edit it.
 - `third_party/openscad-skill/`: pinned upstream snapshot (MIT). `PROVENANCE.md` lists which repo
@@ -79,7 +84,7 @@ then optional tags parsed by regex:
 - `<note>…</note>`: a one-line project memory used to resume later.
 - `<choices>Round|Square</choices>`: quick-reply buttons for a clarifying question.
 
-The prose must not contain code. The UI hides the code block behind a "Design updated" chip.
+The prose must not contain code. The UI hides the code block.
 
 ## OpenSCAD
 - Find the binary in this order: `OPENSCAD_BIN` → `PATH` → `/Applications/OpenSCAD.app/Contents/MacOS/OpenSCAD`.

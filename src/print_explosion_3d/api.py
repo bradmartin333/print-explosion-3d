@@ -18,19 +18,23 @@ import tempfile
 import threading
 import time
 from collections.abc import Callable
-from dataclasses import asdict
+from dataclasses import asdict, replace
 from importlib.metadata import version
 from pathlib import Path
 from typing import Any
 
 from print_explosion_3d import bambu, updater
 from print_explosion_3d.ai import Image, Provider, ProviderError, make_provider
+from print_explosion_3d.ai.catalog import choices_for, find_model
 from print_explosion_3d.ai.usage import total_cost
 from print_explosion_3d.config import Settings
 from print_explosion_3d.designer import Designer, TurnResult, visible_prose
+from print_explosion_3d.scad.estimate import analyze, size_text, time_text
+from print_explosion_3d.scad.labels import label_sheet_scad, parse_names
 from print_explosion_3d.scad.params import ParamError, apply_values, parse_params, visible_sections
 from print_explosion_3d.scad.runner import render
 from print_explosion_3d.workspace import Project, Workspace, find_projects
+from print_explosion_3d.workspace.store import SHARE_EXTENSION, safe_file_name
 
 DEFAULT_NAME = "New project"
 MAX_IMAGES = 4
@@ -46,11 +50,24 @@ _OPEN_PROJECT = re.compile(
     r"^\s*(?:please\s+)?(?:open|resume|continue|reopen|switch\s+to|go\s+back\s+to)\b", re.IGNORECASE
 )
 
-MSG_BUSY = "One moment, I'm still working on the last thing."
-MSG_BUILD_FAILED = (
-    "Those settings didn't work together, so I put things back the way they were. "
-    "Try changing them a little less."
+_DUPLICATE = re.compile(
+    r"^\s*(?:please\s+)?(?:(?:make|create|save|do)\s+(?:me\s+)?(?:a\s+)?)?(?:copy|duplicate)"
+    r"(?:\s+(?:of\s+)?(?:this|it|the\s+project|this\s+project))?\s*[.!]?\s*$",
+    re.IGNORECASE,
 )
+_LABELS = re.compile(
+    r"^\s*(?:please\s+)?(?:make|create|print|design|i(?:'d)?\s+(?:want|need|like))\s+"
+    r"(?:me\s+)?(?:some\s+|a\s+set\s+of\s+|a\s+few\s+)?labels?"
+    r"(?:\s*(?:for|:|-|called|that\s+say|saying|with|of)?\s*(?P<names>.*?))?\s*[.!]?\s*$",
+    re.IGNORECASE,
+)
+
+PREF_FLAGS = ("dark_mode", "still", "show_plate")
+MSG_NOTHING_TO_UNDO = "There's nothing to go back to yet"
+MSG_LABELS = "Here's your label sheet. Edit the words on the right, then press “Update the model”"
+
+MSG_BUSY = "One moment, still working"
+MSG_BUILD_FAILED = "Those settings don't work together, so I put things back. Try a smaller change."
 MSG_NO_OPENSCAD = (
     "I can't build designs on this computer yet. Ask whoever set this up to take a look."
 )
@@ -75,6 +92,7 @@ class Api:
         self._current: Project | None = None
         self._designer: Designer | None = None
         self._built_scad = ""  # the design text that model.stl was built from
+        self._info_cache: tuple[tuple[str, int, int], Any] | None = None
         self._emit: EventSink = lambda _name, _data: None
         self._window: Any = None
         self._busy = threading.Lock()
@@ -114,14 +132,75 @@ class Api:
             "project": self.open_project(),
             "has_key": bool(self._settings.anthropic_api_key),
             "cost": self.cost_text(),
+            "prefs": self.get_prefs(),
+            "models": self.list_models(),
         }
+
+    # --- which AI model to use ------------------------------------------------------------------
+
+    def _effective_settings(self) -> Settings:
+        """The settings, with the model the user picked in the app (if any) applied."""
+        chosen = find_model(self._workspace.prefs().get("model"))
+        if chosen is None:
+            return self._settings
+        return replace(self._settings, provider=chosen.provider, model=chosen.id)
+
+    def list_models(self) -> dict[str, Any]:
+        s = self._effective_settings()
+        return {
+            "current": f"{s.provider}:{s.model}",
+            "choices": [
+                {
+                    "key": m.key,
+                    "label": m.label,
+                    "hint": m.hint,
+                    "provider": m.provider,
+                    "provider_label": m.provider_label,
+                }
+                for m in choices_for(self._settings.provider, self._settings.model)
+            ],
+        }
+
+    def set_model(self, key: str) -> dict[str, Any]:
+        """Pick the AI model. The next message starts a fresh conversation with it.
+
+        A new conversation (seeded from the project's note and current design, like resuming)
+        keeps the saved history valid: one model's thinking can't be replayed to another.
+        """
+        if self._busy.locked():
+            return {"ok": False, "error": MSG_BUSY, **self.list_models()}
+        if find_model(key) is None:
+            return {"ok": False, **self.list_models()}
+        self._workspace.set_prefs({**self._workspace.prefs(), "model": key})
+        self._designer = None
+        return {"ok": True, **self.list_models()}
+
+    # --- preferences: dark mode and the like ---------------------------------------
+
+    def get_prefs(self) -> dict[str, Any]:
+        """Look-and-feel choices. `dark_mode` stays None until set, so the page follows the Mac."""
+        saved = self._workspace.prefs()
+        prefs: dict[str, Any] = {"dark_mode": None, "still": False, "show_plate": False}
+        for key in PREF_FLAGS:
+            if isinstance(saved.get(key), bool):
+                prefs[key] = saved[key]
+        return prefs
+
+    def set_prefs(self, values: dict[str, Any]) -> dict[str, Any]:
+        prefs = self.get_prefs()
+        for key, value in dict(values or {}).items():
+            if key in PREF_FLAGS and isinstance(value, bool):
+                prefs[key] = value
+        saved = {k: v for k, v in prefs.items() if v is not None}
+        self._workspace.set_prefs({**self._workspace.prefs(), **saved})  # keeps the model choice
+        return prefs
 
     def cost_text(self) -> str | None:
         """Status-bar text when PE_SHOW_COST is on; otherwise None."""
         if not self._settings.show_cost:
             return None
         spent = total_cost(self._settings.workspace_dir / "usage.jsonl", self._started)
-        return f"AI cost this time: about ${spent:.2f}"
+        return f"AI cost this time: ~${spent:.2f}"
 
     # --- thumbnails -------------------------------------------------------------------------
 
@@ -209,6 +288,78 @@ class Api:
             self._set_current(None)
         return self._workspace.delete(str(folder))
 
+    def duplicate_project(self) -> dict[str, Any] | None:
+        """Make a separate copy of the open project and switch to it."""
+        if self._busy.locked() or self._current is None:
+            return None
+        copy = self._workspace.duplicate(self._current.folder)
+        if copy is None:
+            return None
+        self._set_current(copy)
+        return self._describe(copy)
+
+    def export_project(self) -> dict[str, Any]:
+        """Ask where to save, then write the open project as one file to share."""
+        if self._current is None or self._window is None:
+            return {"saved": False}
+        import webview
+
+        chosen = self._window.create_file_dialog(
+            webview.FileDialog.SAVE,
+            save_filename=f"{safe_file_name(self._current.name)}{SHARE_EXTENSION}",
+            file_types=("Print Explosion project (*.pe3d)",),
+        )
+        if not chosen:
+            return {"saved": False}
+        target = Path(chosen if isinstance(chosen, str) else chosen[0])
+        if target.suffix.lower() != SHARE_EXTENSION:
+            target = target.with_suffix(SHARE_EXTENSION)
+        if not self._workspace.pack(self._current.folder, target):
+            return {"saved": False, "error": "I couldn't save it there. Try another folder."}
+        return {"saved": True, "name": target.name}
+
+    def import_project(self) -> dict[str, Any]:
+        """Ask for a shared project file and add it as a new project."""
+        if self._busy.locked() or self._window is None:
+            return {"opened": False}
+        import webview
+
+        chosen = self._window.create_file_dialog(
+            webview.FileDialog.OPEN, file_types=("Print Explosion project (*.pe3d)",)
+        )
+        if not chosen:
+            return {"opened": False}
+        project = self._workspace.unpack(Path(chosen if isinstance(chosen, str) else chosen[0]))
+        if project is None:
+            return {"opened": False, "error": "That doesn't look like a shared project."}
+        self._set_current(project)
+        return {"opened": True, "project": self._describe(project)}
+
+    def undo(self) -> dict[str, Any]:
+        """Go back one step in the design and rebuild it. A `built` event follows."""
+        if self._current is None:
+            return {"started": False}
+        if self._busy.locked():
+            return {"started": False, "error": MSG_BUSY}
+        if not self._current.undo():
+            return {"started": False, "error": MSG_NOTHING_TO_UNDO}
+        return self.generate()
+
+    def make_labels(self, names: list[str] | None = None, said: str = "") -> dict[str, Any] | None:
+        """Start a label sheet from the built-in template. No AI call; it builds right away."""
+        if self._busy.locked():
+            return None
+        project = self._workspace.create("Labels")
+        self._set_current(project)
+        project.save_scad(label_sheet_scad(names))
+        words = ", ".join(names) if names else "sample words"
+        project.update_meta(note=f"A sheet of name labels with raised words ({words}).")
+        display: list[dict[str, Any]] = [{"role": "user", "text": said}] if said else []
+        display.append({"role": "assistant", "text": MSG_LABELS})
+        project.save_chat({"display": display})
+        described = self._describe(project)
+        return {**described, "building": bool(self.generate().get("started"))}
+
     def save_design(self, scad: str) -> dict[str, Any]:
         """Autosave the open project's design. Returns the status line for the UI."""
         if self._current is None:
@@ -229,6 +380,7 @@ class Api:
             "chat": project.read_chat(),
             "params": params_payload(scad),
             "has_stl": project.stl_path.is_file(),
+            "can_undo": project.can_undo(),
         }
 
     # --- chat -------------------------------------------------------------------------------
@@ -270,7 +422,7 @@ class Api:
         return {"started": True, "project": asdict(project.info())}
 
     def _make_designer(self, project: Project) -> Designer:
-        s = self._settings
+        s = self._effective_settings()
         return Designer(
             self._provider_factory(s),
             project,
@@ -283,6 +435,15 @@ class Api:
         if _NEW_PROJECT.match(text):
             project = self.new_project()
             return {"command": "new_project", "project": project} if project else None
+        if _DUPLICATE.match(text):
+            copy = self.duplicate_project()
+            return {"command": "duplicate", "project": copy} if copy else None
+        match = _LABELS.match(text)
+        if match:
+            names = parse_names(match["names"] or "")
+            if len(names) > 1 or not (match["names"] or "").strip():
+                project = self.make_labels(names or None, text)
+                return {"command": "labels", "project": project} if project else None
         if _OPEN_PROJECT.match(text):
             matches = find_projects(text, self._workspace.list_projects())
             if matches:
@@ -322,6 +483,7 @@ class Api:
                 "error": result.error,
                 "project": asdict(project.info()),
                 "params": params_payload(project.read_scad()) if result.changed else None,
+                "can_undo": project.can_undo(),
                 "warnings": [w.code for w in result.render.warnings] if result.render else [],
                 "cost": self.cost_text(),
             },
@@ -347,7 +509,7 @@ class Api:
         except ParamError as exc:
             return {"saved": False, "error": str(exc)}
         self._current.save_scad(after)
-        return {"saved": True, "status": "All changes saved"}
+        return {"saved": True, "status": "All changes saved", "can_undo": self._current.can_undo()}
 
     def generate(self) -> dict[str, Any]:
         """Rebuild the model from the saved design. A `built` event follows."""
@@ -384,23 +546,63 @@ class Api:
             {
                 "error": error,
                 "params": params_payload(project.read_scad()),
+                "can_undo": project.can_undo(),
                 "status": "All changes saved",
             },
         )
 
     # --- getting it printed -------------------------------------------------------------------
 
+    def model_info(self) -> dict[str, Any] | None:
+        """Size, rough print time and plastic, and any "heads up" notes, in plain English."""
+        project = self._current
+        if project is None or not project.stl_path.is_file():
+            return None
+        try:
+            stat = project.stl_path.stat()
+            key = (str(project.stl_path), stat.st_size, stat.st_mtime_ns)
+            if self._info_cache is None or self._info_cache[0] != key:
+                self._info_cache = (key, analyze(project.stl_path.read_bytes()))
+        except OSError:
+            return None
+        info = self._info_cache[1]
+        if info is None:
+            return None
+        return {
+            "size": size_text(info.size),
+            "dimensions": [round(v, 2) for v in info.size],
+            "time": time_text(info.minutes),
+            "plastic": f"~{max(1, round(info.grams))} g of plastic",
+            "notes": list(info.notes),
+            "ready": info.ready,
+        }
+
+    def _print_file(self, project: Project) -> Path:
+        """A copy of the model named after the project, so Bambu Studio shows "Bird feeder"
+        instead of "model"."""
+        folder = project.path / "for printing"
+        folder.mkdir(exist_ok=True)
+        for old in folder.glob("*.stl"):
+            old.unlink(missing_ok=True)
+        target = folder / f"{safe_file_name(project.name)}.stl"
+        target.write_bytes(project.stl_path.read_bytes())
+        return target
+
     def export_stl(self) -> dict[str, Any]:
         """Ask where to save, then copy the built model there."""
         if self._current is None or not self._current.stl_path.is_file():
-            return {"saved": False, "error": "There's nothing to save yet."}
+            return {"saved": False, "error": "There's nothing to save yet"}
         if self._window is None:
             return {"saved": False}
         import webview
 
+        try:
+            ready = self._print_file(self._current)
+        except OSError:
+            return {"saved": False, "error": "I couldn't get that ready. Please try again."}
         chosen = self._window.create_file_dialog(
             webview.FileDialog.SAVE,
-            save_filename=f"{self._current.name}.stl",
+            save_filename=ready.name,
             file_types=("3D print file (*.stl)",),
         )
         if not chosen:
@@ -409,15 +611,19 @@ class Api:
         if target.suffix.lower() != ".stl":
             target = target.with_suffix(".stl")
         try:
-            shutil.copyfile(self._current.stl_path, target)
+            shutil.copyfile(ready, target)
         except OSError:
             return {"saved": False, "error": "I couldn't save it there. Try another folder."}
         return {"saved": True, "name": target.name}
 
     def open_in_bambu(self) -> dict[str, Any]:
         if self._current is None or not self._current.stl_path.is_file():
-            return {"opened": False, "error": "There's nothing to print yet."}
-        return bambu.open_in_bambu(self._current.stl_path)
+            return {"opened": False, "error": "There's nothing to print yet"}
+        try:
+            ready = self._print_file(self._current)
+        except OSError:
+            return {"opened": False, "error": "I couldn't get that ready. Please try again."}
+        return bambu.open_in_bambu(ready)
 
 
 # --- helpers (module level, so tests can use them directly) -----------------------------------

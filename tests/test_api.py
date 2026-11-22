@@ -174,8 +174,27 @@ def test_bambu_uses_open_command(h, monkeypatch):
     monkeypatch.setattr(
         "print_explosion_3d.bambu.subprocess.run", lambda cmd, **kw: calls.append(cmd) or Done()
     )
+    monkeypatch.setattr("print_explosion_3d.bambu.find_bambu", lambda: Path("/x/BambuStudio.app"))
     assert h.api.open_in_bambu() == {"opened": True}
-    assert calls[0][:3] == ["open", "-a", "BambuStudio"]
+    assert calls[0][:3] == ["open", "-a", "/x/BambuStudio.app"]
+    assert calls[0][3].endswith("Box.stl")  # named after the project, not "model"
+
+
+def test_bambu_missing_shows_the_file_instead(h, monkeypatch):
+    h.api.send_message("a box")
+    h.wait()
+    calls = []
+
+    class Done:
+        returncode = 0
+
+    monkeypatch.setattr(
+        "print_explosion_3d.bambu.subprocess.run", lambda cmd, **kw: calls.append(cmd) or Done()
+    )
+    monkeypatch.setattr("print_explosion_3d.bambu.find_bambu", lambda: None)
+    res = h.api.open_in_bambu()
+    assert res["opened"] is False and res["revealed"] is True and "Bambu Studio" in res["error"]
+    assert calls[0][:2] == ["open", "-R"]
 
 
 def test_params_payload_skips_hidden_and_vectors_and_survives_junk():
@@ -196,7 +215,7 @@ def test_thumbnails_round_trip(h):
     assert h.api.save_thumbnail("data:image/png;base64," + "A" * 600_000) is False
 
 
-def test_cost_readout_is_opt_in(tmp_path):
+def test_cost_readout_is_on_by_default_and_can_be_hidden(tmp_path):
     from print_explosion_3d.ai.usage import total_cost
 
     log = tmp_path / "usage.jsonl"
@@ -208,11 +227,13 @@ def test_cost_readout_is_opt_in(tmp_path):
     assert total_cost(log, "2500-01-01T00:00:00") == pytest.approx(0.25)
     assert total_cost(tmp_path / "missing.jsonl") == 0.0
 
-    off = Harness(tmp_path / "a")
+    shown = Harness(tmp_path / "a")  # on by default
+    assert shown.api.cost_text() == "AI cost this time: ~$0.00"
+    off = Harness(tmp_path / "b")
+    off.api._settings = load_settings(
+        {"PE_WORKSPACE_DIR": str(tmp_path / "b"), "PE_SHOW_COST": "no"}
+    )
     assert off.api.cost_text() is None
-    on = Harness(tmp_path / "b")
-    on.api._settings = load_settings({"PE_WORKSPACE_DIR": str(tmp_path / "b"), "PE_SHOW_COST": "1"})
-    assert on.api.cost_text() == "AI cost this time: about $0.00"
 
 
 def test_update_check_can_be_turned_off(tmp_path, monkeypatch):
@@ -227,3 +248,145 @@ def test_update_check_can_be_turned_off(tmp_path, monkeypatch):
     h.api._settings = load_settings({"PE_WORKSPACE_DIR": str(tmp_path), "PE_UPDATE_CHECK": "false"})
     assert h.api.check_update() == {"available": False, "notes": ""}
     assert len(calls) == 1  # no git fetch at all when it's off
+
+
+# --- v0.6: undo, copies, labels, sharing, preferences ---------------------------------------
+
+
+def test_undo_steps_back_and_rebuilds(h):
+    h.api.send_message("a box")
+    h.wait()
+    assert h.api.undo() == {"started": False, "error": "There's nothing to go back to yet"}
+    h.api.set_params({"width": 70})
+    assert h.api.undo()["started"] is True
+    done = h.wait()
+    assert done["error"] is None and "width = 40;" in h.api._current.read_scad()
+    assert done["can_undo"] is False
+
+
+def test_chat_copy_command_is_local_but_undo_and_copies_are_not_chat_commands(tmp_path):
+    h = Harness(tmp_path, [reply(), reply(), reply()])
+    h.api.send_message("a box")
+    h.wait()
+    dup = h.api.send_message("make a copy")
+    assert dup["command"] == "duplicate" and dup["project"]["name"] == "Box copy"
+    assert dup["project"]["has_stl"] and dup["project"]["chat"]["display"]
+    assert len(h.provider.calls) == 1  # that didn't use the AI
+    # "undo" and "print 3 of these" are for the AI (or Bambu Studio), not app commands.
+    assert h.api.send_message("undo").get("started") is True
+    h.wait()
+    assert h.api.send_message("print 3 of these").get("started") is True
+    h.wait()
+
+
+def test_model_info_is_plain_english(h):
+    h.api.send_message("a box")
+    h.wait()
+    assert h.api.model_info() is None  # the fake build writes junk, not an STL
+    h.api._current.stl_path.write_bytes(stl_of_box(40, 40, 20))
+    info = h.api.model_info()
+    assert info["ready"] is True and info["size"].startswith("40 \N{MULTIPLICATION SIGN} 40")
+    assert "copies" not in info
+    assert info["time"].startswith("~") and info["plastic"].endswith("of plastic")
+    assert json.dumps(info)
+
+
+def test_make_labels_is_local_and_builds(h):
+    res = h.api.send_message("make labels for sugar, flour and salt")
+    assert res["command"] == "labels" and res["project"]["building"] is True
+    h.wait()
+    scad = h.api._current.read_scad()
+    assert 'names = "sugar, flour, salt";' in scad
+    assert h.provider.calls == []
+    # A description is for the AI to design, not a list of words.
+    assert h.api._local_command("make labels for my spice jars") is None
+    assert h.api.send_message("make some labels")["command"] == "labels"
+    h.wait()
+    assert "Sugar, Flour" in h.api._current.read_scad()
+
+
+def test_share_and_open_a_project(h, tmp_path):
+    h.api.send_message("a box")
+    h.wait()
+    target = tmp_path / "Box.pe3d"
+
+    class Window:
+        def __init__(self, path):
+            self.path = path
+
+        def create_file_dialog(self, *_a, **_k):
+            return str(self.path)
+
+    h.api._window = Window(target)
+    assert h.api.export_project() == {"saved": True, "name": "Box.pe3d"}
+    res = h.api.import_project()
+    assert (res["opened"] and res["project"]["name"] == "Box 2") or res["project"]["name"] == "Box"
+    assert res["project"]["scad"] == SCAD
+    target.write_bytes(b"not a zip")
+    assert h.api.import_project()["error"].startswith("That doesn't look")
+
+
+def test_preferences_are_validated_and_saved(h):
+    assert h.api.get_prefs() == {"dark_mode": None, "still": False, "show_plate": False}
+    prefs = h.api.set_prefs({"dark_mode": True, "still": True, "evil": 1, "show_plate": "x"})
+    assert prefs["dark_mode"] is True and prefs["still"] is True
+    assert prefs["show_plate"] is False and "evil" not in prefs
+    assert "text_size" not in prefs and "high_contrast" not in prefs
+    assert h.api.boot()["prefs"] == prefs
+    assert h.api.set_prefs({"dark_mode": False})["dark_mode"] is False
+
+
+def stl_of_box(w, d, h_=10):
+    """A closed binary STL of a box centred on the plate."""
+    import struct
+
+    x, y = w / 2, d / 2
+    v = [
+        (-x, -y, 0),
+        (x, -y, 0),
+        (x, y, 0),
+        (-x, y, 0),
+        (-x, -y, h_),
+        (x, -y, h_),
+        (x, y, h_),
+        (-x, y, h_),
+    ]
+    quads = [(0, 3, 2, 1), (4, 5, 6, 7), (0, 1, 5, 4), (1, 2, 6, 5), (2, 3, 7, 6), (3, 0, 4, 7)]
+    tris = [t for a, b, c, d_ in quads for t in ((a, b, c), (a, c, d_))]
+    out = b"\0" * 80 + struct.pack("<I", len(tris))
+    for t in tris:
+        out += struct.pack("<12fH", 0, 0, 0, *[c for i in t for c in v[i]], 0)
+    return out
+
+
+def test_model_picker_lists_validates_and_starts_a_fresh_conversation(tmp_path):
+    seen = []
+
+    def factory(settings):
+        seen.append((settings.provider, settings.model))
+        return FakeProvider([reply(), reply()])
+
+    h = Harness(tmp_path)
+    h.api._provider_factory = factory
+    listed = h.api.list_models()
+    assert listed["current"] == "anthropic:claude-sonnet-5-5"
+    assert {c["key"] for c in listed["choices"]} >= {"anthropic:claude-opus-5-5"}
+    h.api.send_message("a box")
+    h.wait()
+    first_designer = h.api._designer
+    assert h.api.set_model("nope")["ok"] is False
+    assert h.api.set_model("anthropic:claude-opus-5-5")["ok"] is True
+    assert h.api._designer is None and first_designer is not None
+    h.api.send_message("taller")
+    h.wait()
+    assert seen == [("anthropic", "claude-sonnet-5-5"), ("anthropic", "claude-opus-5-5")]
+    h.api.set_prefs({"still": True})  # saving a look-and-feel choice keeps the model choice
+    assert h.api.list_models()["current"] == "anthropic:claude-opus-5-5"
+
+
+def test_a_hand_set_model_still_shows_in_the_picker(tmp_path):
+    h = Harness(tmp_path)
+    h.api._settings = load_settings({"PE_WORKSPACE_DIR": str(tmp_path), "PE_MODEL": "my-model"})
+    listed = h.api.list_models()
+    assert listed["current"] == "anthropic:my-model"
+    assert listed["choices"][0]["label"] == "Custom (from settings)"
