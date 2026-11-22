@@ -215,7 +215,7 @@ def test_thumbnails_round_trip(h):
     assert h.api.save_thumbnail("data:image/png;base64," + "A" * 600_000) is False
 
 
-def test_cost_readout_is_opt_in(tmp_path):
+def test_cost_readout_is_on_by_default_and_can_be_hidden(tmp_path):
     from print_explosion_3d.ai.usage import total_cost
 
     log = tmp_path / "usage.jsonl"
@@ -227,11 +227,13 @@ def test_cost_readout_is_opt_in(tmp_path):
     assert total_cost(log, "2500-01-01T00:00:00") == pytest.approx(0.25)
     assert total_cost(tmp_path / "missing.jsonl") == 0.0
 
-    off = Harness(tmp_path / "a")
+    shown = Harness(tmp_path / "a")  # on by default
+    assert shown.api.cost_text() == "AI cost this time: ~$0.00"
+    off = Harness(tmp_path / "b")
+    off.api._settings = load_settings(
+        {"PE_WORKSPACE_DIR": str(tmp_path / "b"), "PE_SHOW_COST": "no"}
+    )
     assert off.api.cost_text() is None
-    on = Harness(tmp_path / "b")
-    on.api._settings = load_settings({"PE_WORKSPACE_DIR": str(tmp_path / "b"), "PE_SHOW_COST": "1"})
-    assert on.api.cost_text() == "AI cost this time: about $0.00"
 
 
 def test_update_check_can_be_turned_off(tmp_path, monkeypatch):
@@ -254,7 +256,7 @@ def test_update_check_can_be_turned_off(tmp_path, monkeypatch):
 def test_undo_steps_back_and_rebuilds(h):
     h.api.send_message("a box")
     h.wait()
-    assert h.api.undo() == {"started": False, "error": "There's nothing to go back to yet."}
+    assert h.api.undo() == {"started": False, "error": "There's nothing to go back to yet"}
     h.api.set_params({"width": 70})
     assert h.api.undo()["started"] is True
     done = h.wait()
@@ -262,29 +264,19 @@ def test_undo_steps_back_and_rebuilds(h):
     assert done["can_undo"] is False
 
 
-def test_local_commands_undo_duplicate_and_copies(h):
+def test_chat_copy_command_is_local_but_undo_and_copies_are_not_chat_commands(tmp_path):
+    h = Harness(tmp_path, [reply(), reply(), reply()])
     h.api.send_message("a box")
-    h.wait()
-    h.api.set_params({"width": 70})
-    assert h.api.send_message("undo")["command"] == "undo"
     h.wait()
     dup = h.api.send_message("make a copy")
     assert dup["command"] == "duplicate" and dup["project"]["name"] == "Box copy"
     assert dup["project"]["has_stl"] and dup["project"]["chat"]["display"]
-    assert h.api.send_message("print 3 of these")["command"] == "copies"
-    assert len(h.provider.calls) == 1  # none of those used the AI
-
-
-def test_copies_never_exceed_what_fits(h, monkeypatch):
-    h.api.send_message("a box")
+    assert len(h.provider.calls) == 1  # that didn't use the AI
+    # "undo" and "print 3 of these" are for the AI (or Bambu Studio), not app commands.
+    assert h.api.send_message("undo").get("started") is True
     h.wait()
-    h.api._current.stl_path.write_bytes(stl_of_box(100, 100))
-    res = h.api.set_copies(9)
-    assert res["copies"] == 1 and res["max_copies"] == 1 and "Only 1" in res["note"]
-    h.api._current.stl_path.write_bytes(stl_of_box(20, 20))
-    assert h.api.set_copies(4)["copies"] == 4
-    ready, placed = h.api._print_file(h.api._current)
-    assert placed == 4 and ready.name == "Box x4.stl"
+    assert h.api.send_message("print 3 of these").get("started") is True
+    h.wait()
 
 
 def test_model_info_is_plain_english(h):
@@ -294,7 +286,8 @@ def test_model_info_is_plain_english(h):
     h.api._current.stl_path.write_bytes(stl_of_box(40, 40, 20))
     info = h.api.model_info()
     assert info["ready"] is True and info["size"].startswith("40 \N{MULTIPLICATION SIGN} 40")
-    assert info["time"].startswith("about") and info["plastic"].endswith("of plastic")
+    assert "copies" not in info
+    assert info["time"].startswith("~") and info["plastic"].endswith("of plastic")
     assert json.dumps(info)
 
 
@@ -334,12 +327,13 @@ def test_share_and_open_a_project(h, tmp_path):
 
 
 def test_preferences_are_validated_and_saved(h):
-    assert h.api.get_prefs()["text_size"] == "normal"
-    prefs = h.api.set_prefs({"text_size": "large", "still": True, "evil": 1, "high_contrast": "x"})
-    assert prefs["text_size"] == "large" and prefs["still"] is True
-    assert prefs["high_contrast"] is False and "evil" not in prefs
-    assert h.api.set_prefs({"text_size": "gigantic"})["text_size"] == "large"
+    assert h.api.get_prefs() == {"dark_mode": None, "still": False, "show_plate": False}
+    prefs = h.api.set_prefs({"dark_mode": True, "still": True, "evil": 1, "show_plate": "x"})
+    assert prefs["dark_mode"] is True and prefs["still"] is True
+    assert prefs["show_plate"] is False and "evil" not in prefs
+    assert "text_size" not in prefs and "high_contrast" not in prefs
     assert h.api.boot()["prefs"] == prefs
+    assert h.api.set_prefs({"dark_mode": False})["dark_mode"] is False
 
 
 def stl_of_box(w, d, h_=10):

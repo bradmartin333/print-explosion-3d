@@ -4,15 +4,21 @@ Plain-English notes for the people who use the app. The newest entry goes at the
 Write what users will notice, not how it was built.
 
 ## 0.6.0
-- New **Go back one step** button (or just type "undo") takes back the last change.
-- A card on the preview now shows how big your model is, about how long it will take to print and how much plastic it needs. It warns you if something might be tricky to print.
+- New **Go back one step** button takes back the last change.
+- A card on the preview now shows how big your model is, roughly how long it will take to print and how much plastic it needs. It warns you if something might be tricky to print.
 - Tick **Show the print plate** to see your model next to the printer's plate.
-- **Copies to print** puts several on one plate. You can also type "print 6 of these".
+- Zoom with a pinch or a two-finger scroll on the trackpad.
 - Say "make some labels" to get a sheet of name labels. Type your words in the box on the right, separated by commas.
 - The **⋯** menu can make a copy of a project, save one as a file to share, and open one that someone shared with you.
-- The same menu has an **AI helper** choice, plus bigger text, stronger colors and a way to stop the model turning.
+- The same menu has an **AI helper** choice, a **dark mode** (it follows your Mac until you choose), and a way to stop the model turning.
 - The **?** button explains how everything works.
+- The project buttons sit on their own row, and the project list always shows the full names.
+- The controls under the preview fit better in a smaller window.
 - Your message now appears in the chat the moment you press Enter, and the preview shows a big "working" card while the designer is busy, so it's clear something is still running.
+- The AI cost estimate now shows at the bottom of the window by default. The photo button is easier to see in dark mode.
+- Problem messages in the chat now tell you when things are sorted out: once the same kind of thing works, the red message turns green ("That worked") and fades. Small heads-up notes fade by themselves.
+- The designer's replies are shorter now, with no measurements or tweak suggestions unless you ask.
+- The "Design updated" tag no longer appears after every reply.
 - "Open in Bambu Studio" now names the file after your project, and shows you the file if Bambu Studio isn't installed.
 
 ## 0.5.1

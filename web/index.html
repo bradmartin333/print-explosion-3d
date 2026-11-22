@@ -17,7 +17,7 @@
 <body>
   <div class="update-banner" id="update-banner" hidden>
     <div class="update-text">
-      <strong id="update-title">A new version is ready.</strong>
+      <strong id="update-title">New version ready</strong>
       <span id="update-notes"></span>
     </div>
     <button class="small" id="update-now" type="button">Update now</button>
@@ -34,26 +34,29 @@
             </button>
             <ul class="project-menu" id="project-menu" role="listbox" hidden></ul>
           </div>
-          <button class="small ghost" id="new-project" type="button">New</button>
-          <button class="small ghost danger" id="delete-project" type="button">Delete</button>
+        </div>
+        <div class="head-row head-actions">
+          <button class="tool" id="new-project" type="button"><svg class="icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>New</button>
+          <button class="tool danger" id="delete-project" type="button"><svg class="icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12h10l1-12M9 7V4h6v3"/></svg>Delete</button>
+          <span class="grow"></span>
           <div class="more">
-            <button class="small ghost icon-btn" id="more" type="button" aria-haspopup="menu" aria-expanded="false" aria-label="More options" title="More options">⋯</button>
+            <button class="tool icon" id="more" type="button" aria-haspopup="menu" aria-expanded="false" aria-label="More options"><svg class="icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" fill="currentColor" stroke="none"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg></button>
             <div class="more-menu" id="more-menu" role="menu" hidden>
               <button type="button" role="menuitem" id="more-copy">Make a copy of this project</button>
               <button type="button" role="menuitem" id="more-share">Share this project…</button>
               <button type="button" role="menuitem" id="more-import">Open a shared project…</button>
               <hr>
-              <label class="menu-field" for="model-select">AI helper
+              <div class="menu-field">
+                <label for="model-select">AI helper</label>
                 <select id="model-select" aria-describedby="model-hint"></select>
                 <span id="model-hint" class="menu-hint"></span>
-              </label>
+              </div>
               <hr>
-              <button type="button" role="menuitemcheckbox" id="more-text">Text size: Normal</button>
-              <button type="button" role="menuitemcheckbox" id="more-contrast" aria-checked="false">Strong colors: off</button>
+              <button type="button" role="menuitemcheckbox" id="more-dark" aria-checked="false">Dark mode: off</button>
               <button type="button" role="menuitemcheckbox" id="more-still" aria-checked="false">Keep the model still: off</button>
             </div>
           </div>
-          <button class="small ghost icon-btn" id="help" type="button" aria-label="Help" title="Help">?</button>
+          <button class="tool icon" id="help" type="button" aria-label="Help"><svg class="icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.5a2.5 2.5 0 1 1 3.6 2.2c-.8.4-1.2 1-1.2 1.8M12 17h.01"/></svg></button>
         </div>
         <span class="save-status" id="save-status">Not saved yet</span>
       </header>
@@ -63,13 +66,15 @@
         <button class="small ghost" id="confirm-no" type="button">Keep it</button>
       </div>
       <div class="messages" id="messages" aria-live="polite"></div>
-      <div class="drop-hint" id="drop-hint" hidden>Drop a photo to share it</div>
+      <div class="drop-hint" id="drop-hint" hidden>Drop a photo</div>
       <form class="composer" id="composer">
         <div class="attachments" id="attachments" hidden></div>
         <div class="composer-row">
-          <textarea id="prompt" rows="2" placeholder="Tell me what you'd like to make…"></textarea>
+          <textarea id="prompt" rows="2" placeholder="Describe what you'd like to make"></textarea>
           <div class="composer-btns">
-            <button class="ghost" id="attach" type="button" title="Add a photo" aria-label="Add a photo">📷</button>
+            <button class="ghost" id="attach" type="button" aria-label="Add a photo">
+              <svg class="icon" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l1.6-2.4h6.8L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13" r="3.6"/></svg>
+            </button>
             <button type="submit" id="send">Send</button>
           </div>
         </div>
@@ -79,7 +84,7 @@
 
     <section class="panel viewer" id="viewer" aria-label="3D preview">
       <div class="stage" id="stage"></div>
-      <div class="viewer-empty" id="viewer-empty">Your design will show up here.</div>
+      <div class="viewer-empty" id="viewer-empty">Your design shows here</div>
       <div class="model-info" id="model-info" hidden aria-live="polite">
         <div class="badge" id="info-badge"></div>
         <div id="info-size"></div>
@@ -87,7 +92,6 @@
         <ul id="info-notes"></ul>
       </div>
       <div class="busy" id="busy" hidden role="status"><span class="spinner"></span><span id="busy-text">Working…</span></div>
-      <div class="viewer-hint" id="viewer-hint">Drag the model to turn it. Click it to pause spinning.</div>
       <div class="viewer-controls">
         <label>Zoom <input type="range" id="zoom" min="0.5" max="2.5" step="0.01" value="1"></label>
         <label>Angle <input type="range" id="angle" min="-85" max="85" step="1" value="28"></label>
@@ -98,17 +102,12 @@
     <section class="panel params" aria-label="Adjust the design">
       <header class="panel-head"><h2>Adjust</h2></header>
       <div class="param-list" id="param-list">
-        <p class="empty">Once there's a design, its sizes and options show up here.</p>
+        <p class="empty">Sizes and options show here</p>
       </div>
       <footer class="actions">
-        <p class="stale" id="stale" hidden>You changed something. Press Update to see it.</p>
         <button id="generate" disabled>Update the model</button>
-        <button id="undo" class="ghost" type="button" disabled title="Go back to how it was a moment ago">Go back one step</button>
-        <div class="copies">
-          <label for="copies">Copies to print</label>
-          <input type="number" id="copies" min="1" max="100" value="1" disabled>
-        </div>
-        <p class="stale" id="copies-note" hidden></p>
+        <button id="undo" class="ghost" type="button" disabled>Go back one step</button>
+
         <button id="export" disabled>Save for printing (STL)</button>
         <button id="bambu" disabled>Open in Bambu Studio</button>
       </footer>
@@ -123,19 +122,19 @@
         <h3>Changing it</h3>
         <p>The boxes and sliders on the right change sizes and options. Change as many as you like, then press <b>Update the model</b>. You can also just ask me in the chat, like “make it a bit taller”.</p>
         <h3>Went the wrong way?</h3>
-        <p>Press <b>Go back one step</b>, or type “undo” in the chat. You can press it again to keep going back.</p>
+        <p>Press <b>Go back one step</b>. You can press it again to keep going back.</p>
         <h3>Is it ready to print?</h3>
-        <p>The card in the corner of the preview tells you how big it is, about how long it will take, and warns you if it might be tricky to print. Tick <b>Show the print plate</b> to see it next to the printer's plate.</p>
+        <p>The card in the corner of the preview tells you how big it is, roughly how long it will take, and warns you if it might be tricky to print. Tick <b>Show the print plate</b> to see it next to the printer's plate.</p>
         <h3>Printing it</h3>
-        <p><b>Open in Bambu Studio</b> sends it straight to your printer's app. <b>Save for printing</b> saves a file instead. Change <b>Copies to print</b> to fit several on one plate, or type “print 6 of these”.</p>
+        <p><b>Open in Bambu Studio</b> sends it straight to your printer's app. <b>Save for printing</b> saves a file instead. Bambu Studio is where you pick how many to print at once.</p>
         <h3>Labels</h3>
         <p>Say “make some labels”. Type the words you want, separated by commas, in the box on the right, then press <b>Update the model</b>.</p>
         <h3>Your projects</h3>
         <p>Everything saves by itself. Click the project name at the top to switch, or type “open my bird feeder”. The <b>⋯</b> button can make a copy, or save a project as a file to send to someone else (and open one they sent you). “Delete” moves a project to the Trash, so you can still get it back.</p>
         <h3>Choosing the AI helper</h3>
         <p>In the <b>⋯</b> menu, <b>AI helper</b> picks which AI does the designing. “Everyday” is right for almost everything. Pick “Extra careful” for a tricky idea. It's slower and costs more. Your next message starts a fresh conversation, and your design carries over.</p>
-        <h3>Making things easier to see</h3>
-        <p>The <b>⋯</b> button also has bigger text, stronger colors, and a way to stop the model turning.</p>
+        <h3>Dark mode</h3>
+        <p>The <b>⋯</b> button also has a dark mode, and a way to stop the model turning.</p>
         <h3>If something goes wrong</h3>
         <p>Try again, or describe it a little differently. Your work is saved, so nothing is lost. If it keeps happening, ask whoever set this up to take a look.</p>
       </div>

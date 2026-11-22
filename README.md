@@ -42,11 +42,10 @@ easy-to-install, easy-to-update, easy-to-use version, where she can make fun stu
 ![Adjusting a design: sliders, a dropdown and a checkbox next to the model](docs/screenshots/adjust.png)
 
 ## Handy extras
-- **Go back one step.** Press the button (or type "undo") to take back the last change, as many times as you need.
-- **Know before you print.** A card on the preview shows the size (in mm and inches), about how long the print takes and how much plastic it uses, and warns about hard-to-print shapes. **Show the print plate** puts the model next to the printer's plate.
-- **Several at once.** **Copies to print** (or "print 6 of these") lays copies out on one plate.
+- **Go back one step.** Press the button to take back the last change, as many times as you need.
+- **Know before you print.** A card on the preview shows the size (in mm and inches), roughly how long the print takes and how much plastic it uses, and warns about hard-to-print shapes. **Show the print plate** puts the model next to the printer's plate. Pinch or two-finger scroll to zoom.
 - **Labels.** Say "make some labels", then type the words, separated by commas, in the Adjust box.
-- **Copy, share, help.** The **⋯** menu makes a copy of a project, saves one as a `.pe3d` file to send to someone, and opens one you were sent. It also holds the **AI helper** picker, bigger text, stronger colors and a "keep the model still" switch. **?** opens a short guide.
+- **Copy, share, help.** The **⋯** menu makes a copy of a project, saves one as a `.pe3d` file to send to someone, and opens one you were sent. It also holds the **AI helper** picker, dark mode and a "keep the model still" switch. **?** opens a short guide.
 
 ## What it's built for
 - **Easy prints.** Designs fit the A1 mini's 180 mm bed, sit flat, avoid supports, and have a small
@@ -84,8 +83,8 @@ uv run print-explosion
 ```
 
 `.env.example` lists every setting (colors, timeouts, model, and so on) with its default and a short
-comment. Only the API key is required; anything left out uses its default. Set `PE_SHOW_COST=true`
-to show a running AI cost estimate in the status bar.
+comment. Only the API key is required; anything left out uses its default. The status bar shows a running AI cost
+estimate; set `PE_SHOW_COST=false` to hide it.
 
 `.env.example` is generated from `config.SPEC`. Regenerate it after adding a setting:
 

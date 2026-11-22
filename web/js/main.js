@@ -19,7 +19,7 @@ function bridgeReady() {
 
 const state = {
   api: null, project: null, busy: false, stale: false, attachments: [], pending: null, edits: {},
-  canUndo: false, prefs: { text_size: "normal", high_contrast: false, still: false, show_plate: false },
+  canUndo: false, prefs: { dark_mode: null, still: false, show_plate: false }, theme: DEFAULT_THEME,
 };
 let viewer, chat, editTimer;
 const handlers = {};
@@ -32,19 +32,17 @@ function refreshButtons() {
   $("generate").disabled = state.busy || !state.stale;
   $("export").disabled = state.busy || !hasModel;
   $("bambu").disabled = state.busy || !hasModel;
-  $("stale").hidden = !state.stale;
   $("viewer-empty").hidden = hasModel;
   $("delete-project").disabled = state.busy || !state.project;
   $("undo").disabled = state.busy || !state.canUndo;
-  $("copies").disabled = state.busy || !hasModel;
 }
 
 // The backend sends short stage names. The chat bubble and the preview's pill say different
 // things about the same stage, so the user never reads the same words twice.
 const STAGES = {
-  "Thinking…": { chat: "Thinking about your idea…", pill: "Designing…" },
+  "Thinking…": { chat: "Thinking…", pill: "Designing…" },
   "Fixing a small problem…": { chat: "Fixing a small problem…", pill: "Adjusting…" },
-  "Building…": { chat: "Putting the pieces together…", pill: "Shaping the model…" },
+  "Building…": { chat: "Building…", pill: "Shaping the model…" },
 };
 const stage = (msg) => STAGES[msg] ?? { chat: msg, pill: msg };
 
@@ -73,9 +71,6 @@ async function refreshModel() {
 async function refreshInfo() {
   const info = viewer.hasModel ? await state.api.model_info() : null;
   $("model-info").hidden = !info;
-  $("copies").value = info ? info.copies : 1;
-  $("copies").max = info ? info.max_copies : 100;
-  $("copies-note").hidden = true;
   if (!info) return;
   const badge = $("info-badge");
   badge.textContent = info.ready ? "Ready to print" : "Heads up";
@@ -97,8 +92,8 @@ async function flushEdits() {
   if (!Object.keys(edits).length) return;
   state.edits = {};
   const res = await state.api.set_params(edits);
-  if (res.saved) { setSaveStatus(res.status); setStale(true); setCanUndo(res.can_undo); }
-  else if (res.error) chat.addInfo(res.error);
+  if (res.saved) { setSaveStatus(res.status); setStale(true); setCanUndo(res.can_undo); chat.resolve("settings"); }
+  else if (res.error) chat.addInfo(res.error, { key: "settings" });
 }
 
 function onParamEdit(name, value) {
@@ -186,7 +181,7 @@ function renderAttachments() {
     const x = document.createElement("button");
     x.type = "button";
     x.textContent = "×";
-    x.title = "Remove this photo";
+    x.title = "Remove";
     x.addEventListener("click", () => { state.attachments.splice(i, 1); renderAttachments(); });
     thumb.append(img, x);
     box.append(thumb);
@@ -196,8 +191,9 @@ function renderAttachments() {
 async function addFiles(files) {
   for (const f of imageFiles(files).slice(0, MAX_PHOTOS - state.attachments.length)) {
     try { state.attachments.push(await prepareImage(f)); }
-    catch { chat.addInfo("I couldn't read that photo. Could you try a different one?"); }
+    catch { chat.addInfo("I couldn't read that photo. Try another", { key: "photo" }); }
   }
+  chat.resolve("photo");
   renderAttachments();
 }
 
@@ -236,7 +232,7 @@ async function send(text) {
   } catch (err) {
     console.error(err);
     takeBack(true);
-    chat.addInfo("That didn't send. Please try again.");
+    chat.addInfo("That didn't send. Try again.", { key: "ai" });
     return;
   }
   if (res.command) {               // handled locally: "start a new project", "undo", "make labels"…
@@ -246,7 +242,7 @@ async function send(text) {
   }
   if (!res.started) {
     takeBack(true);
-    if (res.error) chat.addInfo(res.error);
+    if (res.error) chat.addInfo(res.error, { notice: true });
     return;
   }
   if (!state.project) state.project = res.project; // the first message creates the project
@@ -254,14 +250,7 @@ async function send(text) {
 
 // Commands the app answers itself, without the AI.
 async function handleCommand(res) {
-  if (res.command === "undo") {
-    if (!res.started) chat.addInfo(res.error || "There's nothing to go back to yet.");
-    else if (!state.busy) setBusy(true, "Going back…");
-  } else if (res.command === "copies") {
-    $("copies").value = res.copies;
-    showCopiesNote(res);
-    chat.addInfo(res.note || `OK, I'll put ${res.copies} on the plate when you print.`);
-  } else if (res.project) {
+  if (res.project) {
     await showProject(res.project);
     if (res.building) setBusy(true, "Making your labels…");
   }
@@ -278,8 +267,11 @@ handlers.text = (t) => state.pending?.text(t);
 handlers.turn_done = async (r) => {
   state.pending?.remove();
   state.pending = null;
-  if (r.error) chat.addInfo(r.error);
-  else chat.addAssistant(r.text || (r.changed ? "Here's your design." : ""), { chip: r.changed, choices: r.choices });
+  if (r.error) chat.addInfo(r.error, { key: "ai" });
+  else {
+    chat.resolve("ai", "build");
+    chat.addAssistant(r.text || (r.changed ? "Here you go" : ""), { choices: r.choices });
+  }
   state.project = { ...(state.project || {}), ...r.project };
   setCanUndo(r.can_undo);
   if (r.changed) {
@@ -297,7 +289,8 @@ handlers.turn_done = async (r) => {
 };
 
 handlers.built = async (r) => {
-  if (r.error) chat.addInfo(r.error);
+  if (r.error) chat.addInfo(r.error, { key: "build" });
+  else chat.resolve("build");
   showParams(r.params);
   setCanUndo(r.can_undo);
   setSaveStatus(r.status);
@@ -343,7 +336,7 @@ function wireProjects() {
   });
   $("delete-project").addEventListener("click", () => {
     if (!state.project) return;
-    $("confirm-text").textContent = `Delete "${state.project.name}"? It goes to the Trash, so you can still get it back.`;
+    $("confirm-text").textContent = `Delete "${state.project.name}"? It goes to the Trash.`;
     $("confirm").hidden = false;
   });
   $("confirm-no").addEventListener("click", () => { $("confirm").hidden = true; });
@@ -351,9 +344,10 @@ function wireProjects() {
     $("confirm").hidden = true;
     if (!state.project) return;
     if (!(await state.api.delete_project(state.project.folder))) {
-      chat.addInfo("I couldn't delete that one. Please try again.");
+      chat.addInfo("I couldn't delete that. Try again", { key: "file" });
       return;
     }
+    chat.resolve("file");
     const next = (await state.api.list_projects())[0];
     await showProject(next ? await state.api.open_project(next.folder) : null);
   });
@@ -364,50 +358,41 @@ function wireActions() {
     await flushEdits();
     const res = await state.api.generate();
     if (res.started) setBusy(true, "Updating the model…");
-    else if (res.error) chat.addInfo(res.error);
+    else if (res.error) chat.addInfo(res.error, { notice: true });
   });
   $("export").addEventListener("click", async () => {
     const res = await state.api.export_stl();
-    if (res.error) chat.addInfo(res.error);
-    else if (res.saved) setSaveStatus(`Saved ${res.name}`);
+    if (res.error) chat.addInfo(res.error, { key: "file" });
+    else if (res.saved) { setSaveStatus(`Saved ${res.name}`); chat.resolve("file"); }
   });
   $("bambu").addEventListener("click", async () => {
     const res = await state.api.open_in_bambu();
-    if (res.error) chat.addInfo(res.error);
+    if (res.error) chat.addInfo(res.error, { key: "file" });
+    else chat.resolve("file");
   });
   $("undo").addEventListener("click", async () => {
     await flushEdits();
     const res = await state.api.undo();
     if (res.started) setBusy(true, "Going back…");
-    else if (res.error) chat.addInfo(res.error);
+    else if (res.error) chat.addInfo(res.error, { notice: true });
   });
-  $("copies").addEventListener("change", async () => {
-    const res = await state.api.set_copies($("copies").value);
-    $("copies").value = res.copies;
-    showCopiesNote(res);
-  });
-}
-
-function showCopiesNote(res) {
-  const note = $("copies-note");
-  note.textContent = res.note || (res.copies > 1 ? `${res.copies} will be laid out on one plate.` : "");
-  note.hidden = !note.textContent;
 }
 
 // ---- the ⋯ menu, help, and the look-and-feel choices --------------------------------------
 
-const TEXT_SIZES = [
-  ["normal", "Normal", 1], ["large", "Large", 1.15], ["xlarge", "Extra large", 1.3],
-];
+const DARK_BG = "#1d1a17";
+const darkQuery = window.matchMedia?.("(prefers-color-scheme: dark)");
+// Until the user picks, dark mode follows the Mac's own setting.
+const isDark = () => state.prefs.dark_mode ?? !!darkQuery?.matches;
 
 function applyPrefs() {
   const p = state.prefs;
-  const [, label, zoom] = TEXT_SIZES.find(([k]) => k === p.text_size) ?? TEXT_SIZES[0];
-  document.documentElement.style.zoom = zoom === 1 ? "" : String(zoom);
-  document.documentElement.classList.toggle("hc", p.high_contrast);
-  $("more-text").textContent = `Text size: ${label}`;
+  const dark = isDark();
+  document.documentElement.classList.toggle("dark", dark);
+  document.documentElement.style.setProperty("--bg", dark ? DARK_BG : state.theme.bg_color);
+  viewer?.setDark(dark, dark ? DARK_BG : state.theme.bg_color);
   for (const [id, text, on] of [
-    ["more-contrast", "Strong colors", p.high_contrast],
+    ["more-dark", "Dark mode", dark],
     ["more-still", "Keep the model still", p.still],
   ]) {
     $(id).textContent = `${text}: ${on ? "on" : "off"}`;
@@ -466,35 +451,33 @@ function wireMenu() {
   $("more-copy").addEventListener("click", async () => {
     close();
     const p = await state.api.duplicate_project();
-    if (p) await showProject(p); else chat.addInfo("Open or make a design first, then I can copy it.");
+    if (p) await showProject(p); else chat.addInfo("Make a design first", { notice: true });
   });
   $("more-share").addEventListener("click", async () => {
     close();
-    if (!state.project) { chat.addInfo("Open or make a design first, then I can share it."); return; }
+    if (!state.project) { chat.addInfo("Make a design first", { notice: true }); return; }
     const res = await state.api.export_project();
-    if (res.error) chat.addInfo(res.error);
-    else if (res.saved) setSaveStatus(`Saved ${res.name}`);
+    if (res.error) chat.addInfo(res.error, { key: "file" });
+    else if (res.saved) { setSaveStatus(`Saved ${res.name}`); chat.resolve("file"); }
   });
   $("more-import").addEventListener("click", async () => {
     close();
     const res = await state.api.import_project();
-    if (res.error) chat.addInfo(res.error);
+    if (res.error) chat.addInfo(res.error, { key: "file" });
     else if (res.opened) await showProject(res.project);
   });
-  $("more-text").addEventListener("click", () => {
-    const i = TEXT_SIZES.findIndex(([k]) => k === state.prefs.text_size);
-    setPref({ text_size: TEXT_SIZES[(i + 1) % TEXT_SIZES.length][0] });
-  });
-  $("more-contrast").addEventListener("click", () => setPref({ high_contrast: !state.prefs.high_contrast }));
+  $("more-dark").addEventListener("click", () => { close(); setPref({ dark_mode: !isDark() }); });
+  darkQuery?.addEventListener?.("change", () => { if (state.prefs.dark_mode == null) applyPrefs(); });
   $("more-still").addEventListener("click", () => {
+    close();
     setPref({ still: !state.prefs.still });
     viewer.setSpinning(!state.prefs.still);
   });
   $("model-select").addEventListener("change", async (e) => {
     const res = await state.api.set_model(e.target.value);
     renderModels(res);
-    if (res.ok) chat.addInfo("Switched helpers. Your next message starts a fresh conversation with the new one, and your design carries over.");
-    else if (res.error) chat.addInfo(res.error);
+    if (res.ok) chat.addInfo("Switched helpers. Your design carries over", { notice: true });
+    else if (res.error) chat.addInfo(res.error, { notice: true });
   });
   $("plate").addEventListener("change", (e) => setPref({ show_plate: e.target.checked }));
 
@@ -508,7 +491,7 @@ function wireUpdate() {
   $("update-later").addEventListener("click", () => { banner.hidden = true; });
   $("update-now").addEventListener("click", async () => {
     $("update-now").disabled = true;
-    $("update-title").textContent = "Updating… the app will restart in a moment.";
+    $("update-title").textContent = "Updating, the app will restart";
     $("update-notes").textContent = "";
     const res = await state.api.apply_update();
     if (!res.ok) {
@@ -542,18 +525,21 @@ async function boot() {
     theme = { ...DEFAULT_THEME, ...first.theme };
     status.textContent = `Connected · v${first.version}`;
   } catch (err) {
-    status.textContent = "Couldn't reach the app backend";
+    status.textContent = "Couldn't connect";
     bootError = String(err?.message ?? err);
     console.error(err);
   }
+  state.theme = theme;
   document.documentElement.style.setProperty("--bg", theme.bg_color);
   document.documentElement.style.setProperty("--accent", theme.model_color);
 
-  viewer = createViewer($("stage"), theme, { onElevation: (deg) => { $("angle").value = deg; } });
+  viewer = createViewer($("stage"), theme, {
+    onElevation: (deg) => { $("angle").value = deg; },
+    onZoom: (z) => { $("zoom").value = z; },
+  });
   chat = createChat($("messages"), { onChoice: (c) => send(c) });
   $("zoom").addEventListener("input", (e) => viewer.setZoom(+e.target.value));
   $("angle").addEventListener("input", (e) => viewer.setElevation(+e.target.value));
-  setTimeout(() => { $("viewer-hint").style.opacity = "0"; }, 6000);
   wireComposer();
   wireProjects();
   wireActions();
@@ -570,12 +556,13 @@ async function boot() {
   if (!bootError) {
     await showProject(first.project);
     checkForUpdate(); // in the background; the banner appears if something is ready
-    if (!first.has_key) chat.addInfo("To chat with me, this app needs its AI key. Ask whoever set this up to add it.");
+    if (!first.has_key) chat.addInfo("This app needs its AI key to chat. Ask whoever set it up", { key: "ai" });
   }
 
   // Hook for scripts/smoke_ui.py and scripts/screenshots.py.
   window.__pe = {
     viewer,
+    chat,
     thumbnail: saveThumbnail,
     state: () => ({ status: status.textContent, bootError, ...viewer.stats() }),
   };

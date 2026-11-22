@@ -33,7 +33,6 @@ from print_explosion_3d.scad.estimate import analyze, size_text, time_text
 from print_explosion_3d.scad.labels import label_sheet_scad, parse_names
 from print_explosion_3d.scad.params import ParamError, apply_values, parse_params, visible_sections
 from print_explosion_3d.scad.runner import render
-from print_explosion_3d.scad.stl import MAX_COPIES, tile
 from print_explosion_3d.workspace import Project, Workspace, find_projects
 from print_explosion_3d.workspace.store import SHARE_EXTENSION, safe_file_name
 
@@ -51,40 +50,9 @@ _OPEN_PROJECT = re.compile(
     r"^\s*(?:please\s+)?(?:open|resume|continue|reopen|switch\s+to|go\s+back\s+to)\b", re.IGNORECASE
 )
 
-_NUMBER_WORDS = {
-    w: n
-    for n, w in enumerate(
-        [
-            "one",
-            "two",
-            "three",
-            "four",
-            "five",
-            "six",
-            "seven",
-            "eight",
-            "nine",
-            "ten",
-            "eleven",
-            "twelve",
-        ],
-        start=1,
-    )
-}
-_UNDO = re.compile(
-    r"^\s*(?:please\s+)?(?:undo(?:\s+(?:that|it|the\s+last\s+(?:change|one|thing)))?"
-    r"|go\s+back(?:\s+one\s+step)?|put\s+it\s+back)\s*[.!]?\s*$",
-    re.IGNORECASE,
-)
 _DUPLICATE = re.compile(
     r"^\s*(?:please\s+)?(?:(?:make|create|save|do)\s+(?:me\s+)?(?:a\s+)?)?(?:copy|duplicate)"
     r"(?:\s+(?:of\s+)?(?:this|it|the\s+project|this\s+project))?\s*[.!]?\s*$",
-    re.IGNORECASE,
-)
-_COPIES = re.compile(
-    r"^\s*(?:please\s+)?(?:(?:print|make|give\s+me|i(?:'d)?\s+(?:want|need|like))\s+)?"
-    r"(?P<n>\d{1,3}|" + "|".join(_NUMBER_WORDS) + r")\s+(?:copies|of\s+(?:these|this|them|it))"
-    r"(?:\s+on\s+(?:the|one)\s+(?:plate|sheet))?\s*[.!]?\s*$",
     re.IGNORECASE,
 )
 _LABELS = re.compile(
@@ -94,19 +62,12 @@ _LABELS = re.compile(
     re.IGNORECASE,
 )
 
-PREF_CHOICES = {"text_size": ("normal", "large", "xlarge")}
-PREF_FLAGS = ("high_contrast", "still", "show_plate")
-MSG_NOTHING_TO_UNDO = "There's nothing to go back to yet."
-MSG_LABELS = (
-    "Here's a sheet of labels. Change the words or sizes in the box on the right, "
-    "then press “Update the model”."
-)
+PREF_FLAGS = ("dark_mode", "still", "show_plate")
+MSG_NOTHING_TO_UNDO = "There's nothing to go back to yet"
+MSG_LABELS = "Here's your label sheet. Edit the words on the right, then press “Update the model”"
 
-MSG_BUSY = "One moment, I'm still working on the last thing."
-MSG_BUILD_FAILED = (
-    "Those settings didn't work together, so I put things back the way they were. "
-    "Try changing them a little less."
-)
+MSG_BUSY = "One moment, still working"
+MSG_BUILD_FAILED = "Those settings don't work together, so I put things back. Try a smaller change."
 MSG_NO_OPENSCAD = (
     "I can't build designs on this computer yet. Ask whoever set this up to take a look."
 )
@@ -131,7 +92,6 @@ class Api:
         self._current: Project | None = None
         self._designer: Designer | None = None
         self._built_scad = ""  # the design text that model.stl was built from
-        self._copies = 1  # how many copies to lay out on the plate when printing
         self._info_cache: tuple[tuple[str, int, int], Any] | None = None
         self._emit: EventSink = lambda _name, _data: None
         self._window: Any = None
@@ -215,15 +175,12 @@ class Api:
         self._designer = None
         return {"ok": True, **self.list_models()}
 
-    # --- preferences: text size, contrast and the like ---------------------------------------
+    # --- preferences: dark mode and the like ---------------------------------------
 
     def get_prefs(self) -> dict[str, Any]:
+        """Look-and-feel choices. `dark_mode` stays None until set, so the page follows the Mac."""
         saved = self._workspace.prefs()
-        prefs: dict[str, Any] = {"text_size": "normal"}
-        prefs |= dict.fromkeys(PREF_FLAGS, False)
-        for key, allowed in PREF_CHOICES.items():
-            if saved.get(key) in allowed:
-                prefs[key] = saved[key]
+        prefs: dict[str, Any] = {"dark_mode": None, "still": False, "show_plate": False}
         for key in PREF_FLAGS:
             if isinstance(saved.get(key), bool):
                 prefs[key] = saved[key]
@@ -232,10 +189,10 @@ class Api:
     def set_prefs(self, values: dict[str, Any]) -> dict[str, Any]:
         prefs = self.get_prefs()
         for key, value in dict(values or {}).items():
-            choice = key in PREF_CHOICES and value in PREF_CHOICES[key]
-            if choice or (key in PREF_FLAGS and isinstance(value, bool)):
+            if key in PREF_FLAGS and isinstance(value, bool):
                 prefs[key] = value
-        self._workspace.set_prefs({**self._workspace.prefs(), **prefs})  # keeps the model choice
+        saved = {k: v for k, v in prefs.items() if v is not None}
+        self._workspace.set_prefs({**self._workspace.prefs(), **saved})  # keeps the model choice
         return prefs
 
     def cost_text(self) -> str | None:
@@ -243,7 +200,7 @@ class Api:
         if not self._settings.show_cost:
             return None
         spent = total_cost(self._settings.workspace_dir / "usage.jsonl", self._started)
-        return f"AI cost this time: about ${spent:.2f}"
+        return f"AI cost this time: ~${spent:.2f}"
 
     # --- thumbnails -------------------------------------------------------------------------
 
@@ -398,7 +355,7 @@ class Api:
         words = ", ".join(names) if names else "sample words"
         project.update_meta(note=f"A sheet of name labels with raised words ({words}).")
         display: list[dict[str, Any]] = [{"role": "user", "text": said}] if said else []
-        display.append({"role": "assistant", "text": MSG_LABELS, "chip": True})
+        display.append({"role": "assistant", "text": MSG_LABELS})
         project.save_chat({"display": display})
         described = self._describe(project)
         return {**described, "building": bool(self.generate().get("started"))}
@@ -414,7 +371,6 @@ class Api:
         self._current = project
         self._designer = None  # a new conversation is created lazily on the next message
         self._built_scad = project.read_scad() if project and project.stl_path.is_file() else ""
-        self._copies = 1
 
     def _describe(self, project: Project) -> dict[str, Any]:
         scad = project.read_scad()
@@ -479,15 +435,9 @@ class Api:
         if _NEW_PROJECT.match(text):
             project = self.new_project()
             return {"command": "new_project", "project": project} if project else None
-        if _UNDO.match(text):
-            return {"command": "undo", **self.undo()}
         if _DUPLICATE.match(text):
             copy = self.duplicate_project()
             return {"command": "duplicate", "project": copy} if copy else None
-        match = _COPIES.match(text)
-        if match and self._current is not None and self._current.stl_path.is_file():
-            n = match["n"].lower()
-            return {"command": "copies", **self.set_copies(_NUMBER_WORDS.get(n) or int(n))}
         match = _LABELS.match(text)
         if match:
             names = parse_names(match["names"] or "")
@@ -622,51 +572,32 @@ class Api:
             "size": size_text(info.size),
             "dimensions": [round(v, 2) for v in info.size],
             "time": time_text(info.minutes),
-            "plastic": f"about {max(1, round(info.grams))} g of plastic",
+            "plastic": f"~{max(1, round(info.grams))} g of plastic",
             "notes": list(info.notes),
             "ready": info.ready,
-            "max_copies": info.max_copies,
-            "copies": min(self._copies, info.max_copies),
         }
 
-    def set_copies(self, count: int) -> dict[str, Any]:
-        """How many copies to lay out on the plate when printing. Never more than fit."""
-        try:
-            wanted = max(1, min(MAX_COPIES, int(count)))
-        except (TypeError, ValueError):
-            wanted = 1
-        info = self.model_info()
-        fit = info["max_copies"] if info else MAX_COPIES
-        self._copies = min(wanted, fit)
-        note = f"Only {self._copies} fit on the plate at once." if self._copies < wanted else ""
-        return {"copies": self._copies, "max_copies": fit, "note": note}
-
-    def _print_file(self, project: Project) -> tuple[Path, int]:
-        """The file to print: the model, or several copies laid out on the plate.
-
-        Named after the project, so Bambu Studio shows "Bird feeder" instead of "model".
-        """
-        data = project.stl_path.read_bytes()
-        data, placed = tile(data, self._copies)
+    def _print_file(self, project: Project) -> Path:
+        """A copy of the model named after the project, so Bambu Studio shows "Bird feeder"
+        instead of "model"."""
         folder = project.path / "for printing"
         folder.mkdir(exist_ok=True)
         for old in folder.glob("*.stl"):
             old.unlink(missing_ok=True)
-        stem = safe_file_name(project.name) + (f" x{placed}" if placed > 1 else "")
-        target = folder / f"{stem}.stl"
-        target.write_bytes(data)
-        return target, placed
+        target = folder / f"{safe_file_name(project.name)}.stl"
+        target.write_bytes(project.stl_path.read_bytes())
+        return target
 
     def export_stl(self) -> dict[str, Any]:
         """Ask where to save, then copy the built model there."""
         if self._current is None or not self._current.stl_path.is_file():
-            return {"saved": False, "error": "There's nothing to save yet."}
+            return {"saved": False, "error": "There's nothing to save yet"}
         if self._window is None:
             return {"saved": False}
         import webview
 
         try:
-            ready, placed = self._print_file(self._current)
+            ready = self._print_file(self._current)
         except OSError:
             return {"saved": False, "error": "I couldn't get that ready. Please try again."}
         chosen = self._window.create_file_dialog(
@@ -683,13 +614,13 @@ class Api:
             shutil.copyfile(ready, target)
         except OSError:
             return {"saved": False, "error": "I couldn't save it there. Try another folder."}
-        return {"saved": True, "name": target.name, "copies": placed}
+        return {"saved": True, "name": target.name}
 
     def open_in_bambu(self) -> dict[str, Any]:
         if self._current is None or not self._current.stl_path.is_file():
-            return {"opened": False, "error": "There's nothing to print yet."}
+            return {"opened": False, "error": "There's nothing to print yet"}
         try:
-            ready, _ = self._print_file(self._current)
+            ready = self._print_file(self._current)
         except OSError:
             return {"opened": False, "error": "I couldn't get that ready. Please try again."}
         return bambu.open_in_bambu(ready)

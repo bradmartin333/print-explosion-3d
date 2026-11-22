@@ -109,6 +109,15 @@ def test_auto_fix_is_capped_and_good_design_survives(project):
     assert d.messages[-1].role == "note"
 
 
+def test_old_error_notices_clear_once_a_later_turn_works(project):
+    d, _, _ = make(project, [design("BAD"), design("cube(5);")], fixes=0)
+    assert not d.send("break it").ok
+    assert [e["role"] for e in d.display].count("info") == 1
+    assert d.send("try again").ok
+    saved = project.read_chat()["display"]
+    assert all(e["role"] != "info" for e in d.display + saved)  # the failure notice is gone
+
+
 def test_zero_fixes_means_no_retry(project):
     d, provider, _ = make(project, [design("BAD")], fixes=0)
     assert not d.send("x").ok

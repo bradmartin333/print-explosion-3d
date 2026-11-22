@@ -14,7 +14,6 @@ from print_explosion_3d.scad.estimate import analyze
 from print_explosion_3d.scad.labels import label_sheet_scad
 from print_explosion_3d.scad.params import parse_params
 from print_explosion_3d.scad.runner import render
-from print_explosion_3d.scad.stl import tile
 
 ROOT = Path(__file__).resolve().parent.parent
 # spice_jars_photo is a picture of a shelf for the README (scripts/screenshots.py renders it as a
@@ -62,10 +61,7 @@ def test_controls_are_explained_in_plain_english(built):
     assert params_payload(scad)
 
 
-def test_printability_notes_are_quiet_and_copies_fit(built):
+def test_printability_notes_are_quiet(built):
     name, _scad, _result, out = built
     info = analyze(out.read_bytes())
     assert info is not None and info.ready, f"{name}: {info and info.notes}"
-    assert info.max_copies >= 1
-    _, placed = tile(out.read_bytes(), 3)
-    assert placed == min(3, info.max_copies)

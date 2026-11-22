@@ -98,7 +98,7 @@ def seed(root: Path) -> None:
         project.update_meta(note=note)
         chat = [
             {"role": "user", "text": asked},
-            {"role": "assistant", "text": answered, "chip": True},
+            {"role": "assistant", "text": answered},
         ]
         project.save_chat({"display": chat})
         time.sleep(1.1)  # distinct "updated" times keep the project list in this order
@@ -196,10 +196,12 @@ def drop_photo(window: webview.Window, jpeg: bytes) -> None:
     wait_for(window, "!document.getElementById('attachments').hidden")
 
 
-def turn_finished(window: webview.Window, chips: int) -> None:
+def turn_finished(window: webview.Window, messages: int) -> None:
+    """Wait until `messages` of the user's messages have been answered and nothing is running."""
     wait_for(
         window,
-        f"document.querySelectorAll('.chip').length >= {chips}"
+        f"document.querySelectorAll('.msg.user').length >= {messages}"
+        " && !document.querySelector('.msg.pending')"
         " && document.getElementById('busy').hidden",
         TURN_TIMEOUT_S,
     )

@@ -6,13 +6,9 @@ import subprocess
 from pathlib import Path
 from typing import Any
 
-MSG_NO_BAMBU = (
-    "I couldn't find Bambu Studio on this computer, so I showed you the file instead. "
-    "You can open it in Bambu Studio yourself, or install it from bambulab.com."
-)
+MSG_NO_BAMBU = "Bambu Studio isn't installed, so here's the file instead."
 MSG_NO_BAMBU_NO_FINDER = (
-    "I couldn't find Bambu Studio on this computer. You can still save the file and open it "
-    "yourself."
+    "Bambu Studio isn't installed. You can still save the file and open it yourself."
 )
 
 _APP_NAMES = ("BambuStudio.app", "Bambu Studio.app")

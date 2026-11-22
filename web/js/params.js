@@ -79,7 +79,7 @@ function control(p, onEdit) {
 export function renderParams(container, sections, onEdit) {
   container.replaceChildren();
   if (!sections?.length) {
-    container.append(el("p", { class: "empty", text: "Once there's a design, its sizes and options show up here." }));
+    container.append(el("p", { class: "empty", text: "Sizes and options show here" }));
     return;
   }
   const showTitles = sections.length > 1 || sections[0].section.toLowerCase() !== "settings";

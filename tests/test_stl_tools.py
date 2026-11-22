@@ -4,19 +4,13 @@ from print_explosion_3d.scad.estimate import ModelInfo, size_text, time_text
 from print_explosion_3d.scad.estimate import analyze as _analyze
 from print_explosion_3d.scad.labels import label_sheet_scad, parse_names
 from print_explosion_3d.scad.params import parse_params
-from print_explosion_3d.scad.stl import footprint, max_copies, read_triangles, tile
+from print_explosion_3d.scad.stl import read_triangles
 
 
 def analyze(data: bytes) -> ModelInfo:
     info = _analyze(data)
     assert info is not None
     return info
-
-
-def triangles(data: bytes):
-    found = read_triangles(data)
-    assert found is not None
-    return found
 
 
 def box(w, d, h, z0=0.0):
@@ -34,14 +28,14 @@ def box(w, d, h, z0=0.0):
 def test_read_rejects_junk():
     assert read_triangles(b"") is None
     assert read_triangles(b"x" * 200) is None
-    assert len(triangles(box(10, 10, 10))) == 12
+    assert len(read_triangles(box(10, 10, 10)) or []) == 12
 
 
 def test_analyze_measures_a_box():
     info = analyze(box(40, 20, 10))
     assert info.volume == 8000 or abs(info.volume - 8000) < 1e-3
     assert [round(v) for v in info.size] == [40, 20, 10]
-    assert info.ready and info.max_copies > 1
+    assert info.ready
     assert size_text(info.size) == "40 {0} 20 {0} 10 mm (1.6 {0} 0.8 {0} 0.4 in)".format(
         "\N{MULTIPLICATION SIGN}"
     )
@@ -51,26 +45,13 @@ def test_overhangs_and_tall_parts_get_a_heads_up():
     shelf = analyze(box(60, 60, 5, z0=30))  # a slab floating in mid-air: its underside hangs
     assert any("supports" in n for n in shelf.notes) and not shelf.ready
     tall = analyze(box(10, 10, 80))
-    assert any("tall and narrow" in n for n in tall.notes)
+    assert any("Tall and narrow" in n for n in tall.notes)
 
 
 def test_time_text():
-    assert time_text(2) == "about 5 min"
-    assert time_text(130) == "about 2 hr 10 min"
-    assert time_text(120) == "about 2 hr"
-
-
-def test_tile_lays_copies_on_the_plate_and_stops_when_full():
-    data = box(40, 40, 10)
-    out, n = tile(data, 4)
-    assert n == 4
-    fp = footprint(triangles(out))
-    assert fp.width <= 180 and fp.depth <= 180 and abs(fp.center_x) < 1e-3
-    assert len(triangles(out)) == 48
-    _, n = tile(data, 50)
-    assert n == max_copies(data) == 9
-    assert tile(data, 1) == (data, 1)
-    assert tile(box(200, 20, 5), 3)[1] == 1  # too wide for even one: left alone
+    assert time_text(2) == "~5 min"
+    assert time_text(130) == "~2 hr 10 min"
+    assert time_text(120) == "~2 hr"
 
 
 def test_labels_parse_and_template_parses():

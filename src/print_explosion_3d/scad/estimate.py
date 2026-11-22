@@ -1,6 +1,6 @@
 """Size, print time, plastic and "will it print?" notes for a built model, in plain English.
 
-All of it is rough on purpose ("about 2 hr"): a volume-based guess for a 0.4 mm nozzle, PLA and a
+All of it is rough on purpose ("~2 hr"): a volume-based guess for a 0.4 mm nozzle, PLA and a
 light infill on a Bambu A1 mini. It never calls OpenSCAD, a slicer or the AI.
 """
 
@@ -9,7 +9,7 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass, field
 
-from print_explosion_3d.scad.stl import max_copies, read_triangles
+from print_explosion_3d.scad.stl import read_triangles
 
 PLA_DENSITY = 1.24  # g/cm3
 WALL_MM = 1.2  # outer shell, as sliced
@@ -34,7 +34,6 @@ class ModelInfo:
     minutes: float
     overhang_area: float  # mm2 hanging out over nothing
     notes: list[str] = field(default_factory=list)
-    max_copies: int = 1
 
     @property
     def ready(self) -> bool:
@@ -54,8 +53,8 @@ def time_text(minutes: float) -> str:
     rounded = max(5, round(minutes / 5.0) * 5)
     hours, mins = divmod(rounded, 60)
     if hours and mins:
-        return f"about {hours} hr {mins} min"
-    return f"about {hours} hr" if hours else f"about {mins} min"
+        return f"~{hours} hr {mins} min"
+    return f"~{hours} hr" if hours else f"~{mins} min"
 
 
 def analyze(data: bytes) -> ModelInfo | None:
@@ -94,11 +93,8 @@ def analyze(data: bytes) -> ModelInfo | None:
 
     notes: list[str] = []
     if overhang > OVERHANG_MIN_AREA:
-        notes.append(
-            "Some parts hang out over empty space, so this may need supports "
-            "or look rough underneath."
-        )
+        notes.append("Parts hang over empty space and may need supports")
     footprint = min(size[0], size[1])
     if footprint > 0 and size[2] / footprint > TALL_RATIO:
-        notes.append("This is tall and narrow, so it could wobble or snap while printing.")
-    return ModelInfo(size, volume, grams, seconds / 60, overhang, notes, max_copies(data))
+        notes.append("Tall and narrow, so it may wobble or snap")
+    return ModelInfo(size, volume, grams, seconds / 60, overhang, notes)

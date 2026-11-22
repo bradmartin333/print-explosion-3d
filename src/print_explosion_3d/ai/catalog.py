@@ -29,10 +29,9 @@ class ModelChoice:
 
 
 MODELS: tuple[ModelChoice, ...] = (
-    ModelChoice("anthropic", "claude-sonnet-5-5", "Everyday", "Good at most things. Recommended."),
-    ModelChoice("anthropic", "claude-opus-5-5", "Extra careful", "Slower and costs more."),
-    ModelChoice("anthropic", "claude-haiku-5-5", "Quick and thrifty", "Fast and cheap, simpler."),
-    ModelChoice("anthropic", "claude-fable-5-2", "Most capable", "For tricky designs. Costs most."),
+    ModelChoice("anthropic", "claude-sonnet-5-5", "Everyday", "Best for most things"),
+    ModelChoice("anthropic", "claude-opus-5-5", "Extra careful", "Slower, costs more"),
+    ModelChoice("anthropic", "claude-haiku-5-5", "Quick and thrifty", "Fast and cheap"),
 )
 
 

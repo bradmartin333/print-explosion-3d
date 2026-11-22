@@ -31,10 +31,7 @@ MSG_NO_OPENSCAD = (
     "I made a design, but I can't build it because OpenSCAD isn't set up on this computer. "
     "Ask whoever set this up to take a look."
 )
-MSG_GAVE_UP = (
-    "I tried a few times but couldn't get that to work. Could you describe it a little "
-    "differently, or try something simpler?"
-)
+MSG_GAVE_UP = "I couldn't get that to work. Try describing it differently, or something simpler."
 MSG_REFUSED = "I can't help with that one. Could we try something different?"
 MSG_TOO_BIG = "That one got too big for me to finish. Could we try something simpler?"
 
@@ -248,6 +245,8 @@ class Designer:
 
     def _finish(self, result: TurnResult) -> TurnResult:
         entry: dict[str, Any] = {"role": "assistant"}
+        if not result.error:  # something worked, so earlier error notices are out of date
+            self.display[:] = [e for e in self.display if e.get("role") != "info"]
         if result.error:
             entry = {"role": "info", "text": result.error}
         else:
