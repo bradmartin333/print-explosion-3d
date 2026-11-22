@@ -3,6 +3,9 @@
 Plain-English notes for the people who use the app. The newest entry goes at the top; the app's update banner shows it.
 Write what users will notice, not how it was built.
 
+## 0.6.1
+- Long waits now show a running timer and a note that bigger designs can take a minute or two, so you can tell the app is still working.
+
 ## 0.6.0
 - See before you print: a card on the preview shows the size, roughly how long it will take and how much plastic it needs, and warns about shapes that are tricky to print. Tick **Show the print plate** to see it next to the printer's plate.
 - **Go back one step** takes back the last change.

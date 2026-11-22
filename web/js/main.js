@@ -46,7 +46,28 @@ const STAGES = {
 };
 const stage = (msg) => STAGES[msg] ?? { chat: msg, pill: msg };
 
+// Long waits: after a few seconds show how long it has been and say what's normal, so a slow
+// design never looks like a frozen app. The pill keeps its stage name; the chat bubble gets the hint.
+let waitTimer = null, waitStart = 0, waitStage = "", waitChat = "";
+function waitHint(secs) {
+  const t = `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, "0")}`;
+  if (secs < 10) return "";
+  if (secs < 45) return ` ${t}`;
+  if (secs < 120) return ` ${t} · Bigger designs take a minute or two`;
+  return ` ${t} · Still working. This one is taking a while, but it hasn't stopped`;
+}
+function tickWait() {
+  const hint = waitHint(Math.floor((Date.now() - waitStart) / 1000));
+  $("busy-text").textContent = waitStage + hint;
+  state.pending?.status(waitChat + hint);
+}
+function stopWait() { clearInterval(waitTimer); waitTimer = null; }
+
 function setBusy(on, text = "Working…") {
+  if (on && !state.busy) { waitStart = Date.now(); waitTimer = setInterval(tickWait, 1000); }
+  if (!on) stopWait();
+  waitStage = text;
+  waitChat = text;
   state.busy = on;
   $("busy").hidden = !on;
   $("busy-text").textContent = text;
@@ -259,6 +280,9 @@ async function handleCommand(res) {
 handlers.status = (msg) => {
   if (!state.busy) setBusy(true, stage(msg).pill); // a build the app started itself
   const s = stage(msg);
+  waitStage = s.pill;
+  waitChat = s.chat;
+  waitStart = Date.now(); // a new stage (e.g. a fix round) restarts the clock
   state.pending?.status(s.chat);
   $("busy-text").textContent = s.pill;
 };
