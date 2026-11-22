@@ -275,3 +275,4 @@ html.hc .menu-field select { border-color: #000; }
 .stage canvas { transition: opacity .25s; }
 .viewer.is-busy .stage canvas { opacity: .45; }
 .viewer.is-busy .viewer-empty { opacity: .3; }
+.busy { pointer-events: none; }

@@ -12,6 +12,7 @@ Write what users will notice, not how it was built.
 - The **⋯** menu can make a copy of a project, save one as a file to share, and open one that someone shared with you.
 - The same menu has an **AI helper** choice, plus bigger text, stronger colors and a way to stop the model turning.
 - The **?** button explains how everything works.
+- Your message now appears in the chat the moment you press Enter, and the preview shows a big "working" card while the designer is busy, so it's clear something is still running.
 - "Open in Bambu Studio" now names the file after your project, and shows you the file if Bambu Studio isn't installed.
 
 ## 0.5.1
